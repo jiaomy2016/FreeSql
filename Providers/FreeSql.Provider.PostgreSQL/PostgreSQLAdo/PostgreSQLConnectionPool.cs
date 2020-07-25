@@ -1,5 +1,5 @@
 ﻿using Npgsql;
-using SafeObjectPool;
+using FreeSql.Internal.ObjectPool;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -20,6 +20,8 @@ namespace FreeSql.PostgreSQL
 
         public PostgreSQLConnectionPool(string name, string connectionString, Action availableHandler, Action unavailableHandler) : base(null)
         {
+            this.availableHandler = availableHandler;
+            this.unavailableHandler = unavailableHandler;
             var policy = new PostgreSQLConnectionPoolPolicy
             {
                 _pool = this,
@@ -27,9 +29,6 @@ namespace FreeSql.PostgreSQL
             };
             this.Policy = policy;
             policy.ConnectionString = connectionString;
-
-            this.availableHandler = availableHandler;
-            this.unavailableHandler = unavailableHandler;
         }
 
         public void Return(Object<DbConnection> obj, Exception exception, bool isRecreate = false)
@@ -63,6 +62,7 @@ namespace FreeSql.PostgreSQL
         public TimeSpan IdleTimeout { get; set; } = TimeSpan.FromSeconds(20);
         public int AsyncGetCapacity { get; set; } = 10000;
         public bool IsThrowGetTimeoutException { get; set; } = true;
+        public bool IsAutoDisposeWithSystem { get; set; } = true;
         public int CheckAvailableInterval { get; set; } = 5;
 
         static ConcurrentDictionary<string, int> dicConnStrIncr = new ConcurrentDictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
@@ -118,7 +118,8 @@ namespace FreeSql.PostgreSQL
 
         public void OnDestroy(DbConnection obj)
         {
-            if (obj.State != ConnectionState.Closed) obj.Close();
+            try { if (obj.State != ConnectionState.Closed) obj.Close(); } catch { }
+            try { NpgsqlConnection.ClearPool(obj as NpgsqlConnection); } catch { }
             obj.Dispose();
         }
 
@@ -188,7 +189,7 @@ namespace FreeSql.PostgreSQL
 
         public void OnReturn(Object<DbConnection> obj)
         {
-
+            //if (obj?.Value != null && obj.Value.State != ConnectionState.Closed) try { obj.Value.Close(); } catch { }
         }
 
         public void OnAvailable()

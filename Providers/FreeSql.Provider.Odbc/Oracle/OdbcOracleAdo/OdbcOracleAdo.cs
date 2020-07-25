@@ -1,6 +1,6 @@
 ﻿using FreeSql.Internal;
 using FreeSql.Internal.Model;
-using SafeObjectPool;
+using FreeSql.Internal.ObjectPool;
 using System;
 using System.Collections;
 using System.Data.Common;
@@ -12,8 +12,8 @@ namespace FreeSql.Odbc.Oracle
 {
     class OdbcOracleAdo : FreeSql.Internal.CommonProvider.AdoProvider
     {
-        public OdbcOracleAdo() : base(DataType.OdbcOracle) { }
-        public OdbcOracleAdo(CommonUtils util, string masterConnectionString, string[] slaveConnectionStrings, Func<DbConnection> connectionFactory) : base(DataType.OdbcOracle)
+        public OdbcOracleAdo() : base(DataType.OdbcOracle, null, null) { }
+        public OdbcOracleAdo(CommonUtils util, string masterConnectionString, string[] slaveConnectionStrings, Func<DbConnection> connectionFactory) : base(DataType.OdbcOracle, masterConnectionString, slaveConnectionStrings)
         {
             base._util = util;
             if (connectionFactory != null)
@@ -42,8 +42,10 @@ namespace FreeSql.Odbc.Oracle
                 return $"hextoraw('{CommonUtils.BytesSqlRaw(param as byte[])}')";
             else if (param is bool || param is bool?)
                 return (bool)param ? 1 : 0;
-            else if (param is string || param is char)
+            else if (param is string)
                 return string.Concat("'", param.ToString().Replace("'", "''"), "'");
+            else if (param is char)
+                return string.Concat("'", param.ToString().Replace("'", "''").Replace('\0', ' '), "'");
             else if (param is Enum)
                 return ((Enum)param).ToInt64();
             else if (decimal.TryParse(string.Concat(param), out var trydec))

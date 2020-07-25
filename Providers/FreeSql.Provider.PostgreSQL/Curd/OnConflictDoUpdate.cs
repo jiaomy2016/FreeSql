@@ -1,14 +1,11 @@
 ﻿using FreeSql.Aop;
-using FreeSql.Internal;
 using FreeSql.Internal.Model;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace FreeSql.PostgreSQL.Curd
@@ -156,7 +153,7 @@ namespace FreeSql.PostgreSQL.Curd
             if (string.IsNullOrEmpty(sql)) return 0;
 
             var before = new CurdBeforeEventArgs(_pgsqlInsert.InternalTable.Type, _pgsqlInsert.InternalTable, CurdType.Insert, sql, _pgsqlInsert.InternalParams);
-            _pgsqlInsert.InternalOrm.Aop.CurdBefore?.Invoke(_pgsqlInsert, before);
+            _pgsqlInsert.InternalOrm.Aop.CurdBeforeHandler?.Invoke(_pgsqlInsert, before);
             long ret = 0;
             Exception exception = null;
             try
@@ -171,7 +168,7 @@ namespace FreeSql.PostgreSQL.Curd
             finally
             {
                 var after = new CurdAfterEventArgs(before, exception, ret);
-                _pgsqlInsert.InternalOrm.Aop.CurdAfter?.Invoke(_pgsqlInsert, after);
+                _pgsqlInsert.InternalOrm.Aop.CurdAfterHandler?.Invoke(_pgsqlInsert, after);
                 ClearData();
             }
             return ret;
@@ -185,7 +182,7 @@ namespace FreeSql.PostgreSQL.Curd
             if (string.IsNullOrEmpty(sql)) return 0;
 
             var before = new CurdBeforeEventArgs(_pgsqlInsert.InternalTable.Type, _pgsqlInsert.InternalTable, CurdType.Insert, sql, _pgsqlInsert.InternalParams);
-            _pgsqlInsert.InternalOrm.Aop.CurdBefore?.Invoke(_pgsqlInsert, before);
+            _pgsqlInsert.InternalOrm.Aop.CurdBeforeHandler?.Invoke(_pgsqlInsert, before);
             long ret = 0;
             Exception exception = null;
             try
@@ -200,7 +197,7 @@ namespace FreeSql.PostgreSQL.Curd
             finally
             {
                 var after = new CurdAfterEventArgs(before, exception, ret);
-                _pgsqlInsert.InternalOrm.Aop.CurdAfter?.Invoke(_pgsqlInsert, after);
+                _pgsqlInsert.InternalOrm.Aop.CurdAfterHandler?.Invoke(_pgsqlInsert, after);
                 ClearData();
             }
             return ret;

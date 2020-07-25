@@ -45,13 +45,30 @@ public interface IFreeSql : IDisposable
     IInsert<T1> Insert<T1>(IEnumerable<T1> source) where T1 : class;
 
     /// <summary>
+    /// 插入或更新数据，此功能依赖数据库特性（低版本可能不支持），参考如下：<para></para>
+    /// MySql 5.6+: on duplicate key update<para></para>
+    /// PostgreSQL 9.4+: on conflict do update<para></para>
+    /// SqlServer 2008+: merge into<para></para>
+    /// Oracle 11+: merge into<para></para>
+    /// Sqlite: replace into<para></para>
+    /// 达梦: merge into<para></para>
+    /// 人大金仓：on conflict do update<para></para>
+    /// 神通：merge into<para></para>
+    /// MsAccess：不支持<para></para>
+    /// 注意区别：FreeSql.Repository 仓储也有 InsertOrUpdate 方法（不依赖数据库特性）
+    /// </summary>
+    /// <typeparam name="T1"></typeparam>
+    /// <returns></returns>
+    IInsertOrUpdate<T1> InsertOrUpdate<T1>() where T1 : class;
+
+    /// <summary>
     /// 修改数据
     /// </summary>
     /// <typeparam name="T1"></typeparam>
     /// <returns></returns>
     IUpdate<T1> Update<T1>() where T1 : class;
     /// <summary>
-    /// 修改数据，传入动态对象如：主键值 | new[]{主键值1,主键值2} | TEntity1 | new[]{TEntity1,TEntity2} | new{id=1}
+    /// 修改数据，传入动态条件，如：主键值 | new[]{主键值1,主键值2} | TEntity1 | new[]{TEntity1,TEntity2} | new{id=1}
     /// </summary>
     /// <typeparam name="T1"></typeparam>
     /// <param name="dywhere">主键值、主键值集合、实体、实体集合、匿名对象、匿名对象集合</param>
@@ -65,7 +82,7 @@ public interface IFreeSql : IDisposable
     /// <returns></returns>
     ISelect<T1> Select<T1>() where T1 : class;
     /// <summary>
-    /// 查询数据，传入动态对象如：主键值 | new[]{主键值1,主键值2} | TEntity1 | new[]{TEntity1,TEntity2} | new{id=1}
+    /// 查询数据，传入动态条件，如：主键值 | new[]{主键值1,主键值2} | TEntity1 | new[]{TEntity1,TEntity2} | new{id=1}
     /// </summary>
     /// <typeparam name="T1"></typeparam>
     /// <param name="dywhere">主键值、主键值集合、实体、实体集合、匿名对象、匿名对象集合</param>
@@ -79,7 +96,7 @@ public interface IFreeSql : IDisposable
     /// <returns></returns>
     IDelete<T1> Delete<T1>() where T1 : class;
     /// <summary>
-    /// 删除数据，传入动态对象如：主键值 | new[]{主键值1,主键值2} | TEntity1 | new[]{TEntity1,TEntity2} | new{id=1}
+    /// 删除数据，传入动态条件，如：主键值 | new[]{主键值1,主键值2} | TEntity1 | new[]{TEntity1,TEntity2} | new{id=1}
     /// </summary>
     /// <typeparam name="T1"></typeparam>
     /// <param name="dywhere">主键值、主键值集合、实体、实体集合、匿名对象、匿名对象集合</param>
@@ -87,23 +104,18 @@ public interface IFreeSql : IDisposable
     IDelete<T1> Delete<T1>(object dywhere) where T1 : class;
 
     /// <summary>
-    /// 开启事务（不支持异步），60秒未执行完成（可能）被其他线程事务自动提交
+    /// 开启事务（不支持异步）<para></para>
+    /// v1.5.0 关闭了线程事务超时自动提交的机制
     /// </summary>
     /// <param name="handler">事务体 () => {}</param>
     void Transaction(Action handler);
     /// <summary>
-    /// 开启事务（不支持异步）
-    /// </summary>
-    /// <param name="timeout">超时，未执行完成（可能）被其他线程事务自动提交</param>
-    /// <param name="handler">事务体 () => {}</param>
-    void Transaction(TimeSpan timeout, Action handler);
-    /// <summary>
-    /// 开启事务（不支持异步）
+    /// 开启事务（不支持异步）<para></para>
+    /// v1.5.0 关闭了线程事务超时自动提交的机制
     /// </summary>
     /// <param name="isolationLevel"></param>
     /// <param name="handler">事务体 () => {}</param>
-    /// <param name="timeout">超时，未执行完成（可能）被其他线程事务自动提交</param>
-    void Transaction(IsolationLevel isolationLevel, TimeSpan timeout, Action handler);
+    void Transaction(IsolationLevel isolationLevel, Action handler);
 
     /// <summary>
     /// 数据库访问对象

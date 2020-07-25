@@ -2,7 +2,7 @@
 using FreeSql.DatabaseModel;
 using FreeSql.Extensions.EntityUtil;
 using FreeSql.Internal.Model;
-using SafeObjectPool;
+using FreeSql.Internal.ObjectPool;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -79,7 +79,7 @@ namespace FreeSql.Internal
             if (entity == null) return _orm.CodeFirst;
             var type = typeof(T);
             var table = dicConfigEntity.GetOrAdd(type, new TableAttribute());
-            var fluent = new TableFluent<T>(CodeFirst, table);
+            var fluent = new TableFluent<T>(table);
             entity.Invoke(fluent);
             Utils.RemoveTableByEntity(type, this); //remove cache
             return _orm.CodeFirst;
@@ -88,7 +88,7 @@ namespace FreeSql.Internal
         {
             if (entity == null) return _orm.CodeFirst;
             var table = dicConfigEntity.GetOrAdd(type, new TableAttribute());
-            var fluent = new TableFluent(CodeFirst, type, table);
+            var fluent = new TableFluent(type, table);
             entity.Invoke(fluent);
             Utils.RemoveTableByEntity(type, this); //remove cache
             return _orm.CodeFirst;
@@ -100,10 +100,10 @@ namespace FreeSql.Internal
         public TableAttribute GetEntityTableAttribute(Type type)
         {
             TableAttribute attr = null;
-            if (_orm.Aop.ConfigEntity != null)
+            if (_orm.Aop.ConfigEntityHandler != null)
             {
                 var aope = new Aop.ConfigEntityEventArgs(type);
-                _orm.Aop.ConfigEntity(_orm, aope);
+                _orm.Aop.ConfigEntityHandler(_orm, aope);
                 attr = aope.ModifyResult;
             }
             if (attr == null) attr = new TableAttribute();
@@ -130,10 +130,10 @@ namespace FreeSql.Internal
         public ColumnAttribute GetEntityColumnAttribute(Type type, PropertyInfo proto)
         {
             ColumnAttribute attr = null;
-            if (_orm.Aop.ConfigEntityProperty != null)
+            if (_orm.Aop.ConfigEntityPropertyHandler != null)
             {
                 var aope = new Aop.ConfigEntityPropertyEventArgs(type, proto);
-                _orm.Aop.ConfigEntityProperty(_orm, aope);
+                _orm.Aop.ConfigEntityPropertyHandler(_orm, aope);
                 attr = aope.ModifyResult;
             }
             if (attr == null) attr = new ColumnAttribute();
@@ -219,10 +219,10 @@ namespace FreeSql.Internal
         public IndexAttribute[] GetEntityIndexAttribute(Type type)
         {
             var ret = new Dictionary<string, IndexAttribute>();
-            if (_orm.Aop.ConfigEntity != null)
+            if (_orm.Aop.ConfigEntityHandler != null)
             {
                 var aope = new Aop.ConfigEntityEventArgs(type);
-                _orm.Aop.ConfigEntity(_orm, aope);
+                _orm.Aop.ConfigEntityHandler(_orm, aope);
                 foreach (var idxattr in aope.ModifyIndexResult)
                     if (!string.IsNullOrEmpty(idxattr.Name) && !string.IsNullOrEmpty(idxattr.Fields))
                     {
@@ -275,6 +275,10 @@ namespace FreeSql.Internal
                     ++pkidx;
                 }
                 return sb.ToString();
+            }
+            else if (primarys.Length == 1 && type == typeof(string))
+            {
+                return $"{aliasAndDot}{this.QuoteSqlName(pk1.Attribute.Name)} = {this.FormatSql("{0}", Utils.GetDataReaderValue(pk1.Attribute.MapType, dywhere))}";
             }
             else if (dywhere is IEnumerable)
             {
@@ -368,12 +372,56 @@ namespace FreeSql.Internal
         }
 
         /// <summary>
+        /// 动态读取 DescriptionAttribute 注释文本
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public static Dictionary<string, string> GetPropertyCommentByDescriptionAttribute(Type type)
+        {
+            var dic = new Dictionary<string, string>();
+            GetDydesc(null); //class注释
+
+            var props = type.GetPropertiesDictIgnoreCase().Values;
+            foreach (var prop in props)
+                GetDydesc(prop);
+
+            return dic;
+
+            void GetDydesc(PropertyInfo prop)
+            {
+                object[] attrs = null;
+                try
+                {
+                    attrs = prop == null ? 
+                        type.GetCustomAttributes(false).ToArray() : 
+                        prop.GetCustomAttributes(false).ToArray(); //.net core 反射存在版本冲突问题，导致该方法异常
+                }
+                catch { }
+
+                var dyattr = attrs?.Where(a => {
+                    return ((a as Attribute)?.TypeId as Type)?.Name == "DescriptionAttribute";
+                }).FirstOrDefault();
+                if (dyattr != null)
+                {
+                    var valueProp = dyattr.GetType().GetProperties().Where(a => a.PropertyType == typeof(string)).FirstOrDefault();
+                    var comment = valueProp?.GetValue(dyattr, null)?.ToString();
+                    if (string.IsNullOrEmpty(comment) == false)
+                        dic.Add(prop == null ? 
+                            "" : 
+                            prop.Name, comment);
+                }
+            }
+        }
+
+        /// <summary>
         /// 通过属性的注释文本，通过 xml 读取
         /// </summary>
         /// <param name="type"></param>
         /// <returns>Dict：key=属性名，value=注释</returns>
         public static Dictionary<string, string> GetProperyCommentBySummary(Type type)
         {
+            if (type.Assembly.IsDynamic) return null;
+            //动态生成的程序集，访问不了 Assembly.Location/Assembly.CodeBase
             var regex = new Regex(@"\.(dll|exe)", RegexOptions.IgnoreCase);
             var xmlPath = regex.Replace(type.Assembly.Location, ".xml");
             if (File.Exists(xmlPath) == false)
@@ -400,11 +448,19 @@ namespace FreeSql.Internal
                 }
                 var xmlNav = xpath.CreateNavigator();
 
+                var className = (type.IsNested ? $"{type.Namespace}.{type.DeclaringType.Name}.{type.Name}" : $"{type.Namespace}.{type.Name}").Trim('.');
+                var node = xmlNav.SelectSingleNode($"/doc/members/member[@name='T:{className}']/summary");
+                if (node != null)
+                {
+                    var comment = node.InnerXml.Trim(' ', '\r', '\n', '\t');
+                    if (string.IsNullOrEmpty(comment) == false) dic.Add("", comment); //class注释
+                }
+
                 var props = type.GetPropertiesDictIgnoreCase().Values;
                 foreach (var prop in props)
                 {
-                    var className = (prop.DeclaringType.IsNested ? $"{prop.DeclaringType.Namespace}.{prop.DeclaringType.DeclaringType.Name}.{prop.DeclaringType.Name}" : $"{prop.DeclaringType.Namespace}.{prop.DeclaringType.Name}").Trim('.');
-                    var node = xmlNav.SelectSingleNode($"/doc/members/member[@name='P:{className}.{prop.Name}']/summary");
+                    className = (prop.DeclaringType.IsNested ? $"{prop.DeclaringType.Namespace}.{prop.DeclaringType.DeclaringType.Name}.{prop.DeclaringType.Name}" : $"{prop.DeclaringType.Namespace}.{prop.DeclaringType.Name}").Trim('.');
+                    node = xmlNav.SelectSingleNode($"/doc/members/member[@name='P:{className}.{prop.Name}']/summary");
                     if (node == null) continue;
                     var comment = node.InnerXml.Trim(' ', '\r', '\n', '\t');
                     if (string.IsNullOrEmpty(comment)) continue;

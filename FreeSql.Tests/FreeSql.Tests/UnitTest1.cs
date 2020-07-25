@@ -183,73 +183,73 @@ namespace FreeSql.Tests
         {
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "article_id", IsIdentity = true, IsPrimary = true)]
             public int ArticleId { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "article_title")]
             public string ArticleTitle { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "category_id")]
             public int CategoryId { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "channel_id")]
             public int ChannelId { get; set; }
 
             /// <summary>
             /// 类型
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "type_id")]
             public int TypeId { get; set; }
 
             /// <summary>
             /// 内容简介
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "summary")]
             public string Summary { get; set; }
 
             /// <summary>
             /// 缩略图
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "thumbnail")]
             public string Thumbnail { get; set; }
 
             /// <summary>
             /// 点击量
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "hits")]
             public int Hits { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "is_display")]
             public int IsDisplay { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "status")]
             public int Status { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "create_time")]
             public int CreateTime { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "release_time")]
             public int ReleaseTime { get; set; }
 
@@ -438,6 +438,17 @@ namespace FreeSql.Tests
         [Fact]
         public void Test1()
         {
+            var testemoji = new TestGuidId { xxx = "💐🌸💮🌹🌺🌻🌼🌷🌱🌿🍀" };
+            Assert.Equal(1, g.sqlserver.Insert(testemoji).ExecuteAffrows());
+            var emoji = g.sqlserver.Select<TestGuidId>().Where(a => a.Id == testemoji.Id).First();
+            Assert.Equal("💐🌸💮🌹🌺🌻🌼🌷🌱🌿🍀", emoji.xxx);
+
+            Assert.Equal(1, g.sqlserver.Delete<TestGuidId>(testemoji).ExecuteAffrows());
+            testemoji = new TestGuidId { xxx = "💐🌸💮🌹🌺🌻🌼🌷🌱🌿🍀" };
+            Assert.Equal(1, g.sqlserver.Insert<TestGuidId>().NoneParameter().AppendData(testemoji).ExecuteAffrows());
+            emoji = g.sqlserver.Select<TestGuidId>().Where(a => a.Id == testemoji.Id).First();
+            Assert.Equal("💐🌸💮🌹🌺🌻🌼🌷🌱🌿🍀", emoji.xxx);
+
             var _model = new TestUpdateModel { 
                 F_EmpId = "xx11", 
                 F_RoleType = TestUpdateModelEnum.x2, 
@@ -550,7 +561,6 @@ namespace FreeSql.Tests
 
 
 
-
             var gkjdjd = g.sqlite.Select<AuthorTest>().Where(a => a.Post.AsSelect().Count() > 0).ToList();
 
             var testrunsql1 =  g.mysql.Select<TaskBuild>().Where(a => a.OptionsEntity04 > DateTime.Now.AddDays(0).ToString("yyyyMMdd").TryTo<int>()).ToSql();
@@ -575,7 +585,7 @@ namespace FreeSql.Tests
 
             IFreeSql fsql = new FreeSql.FreeSqlBuilder()
               .UseConnectionString(FreeSql.DataType.PostgreSQL, "Host=192.168.164.10;Port=5432;Username=postgres;Password=123456;Database=tedb;Pooling=true;Maximum Pool Size=7")
-              .UseEntityPropertyNameConvert(Internal.StringConvertType.PascalCaseToUnderscoreWithLower)
+              .UseNameConvert(Internal.NameConvertType.PascalCaseToUnderscoreWithLower)
               .UseNoneCommandParameter(true)
               .UseAutoSyncStructure(true) //自动同步实体结构到数据库
               .UseMonitorCommand(a => Trace.WriteLine(a.CommandText))
@@ -676,6 +686,12 @@ namespace FreeSql.Tests
                     subquery = g.sqlite.Select<ZX.Model.CustomerCheckupGroup>().Where(b => b.Id == a.Id).First(b => b.Group)
                 });
 
+            var sklgjlskdg12 = g.sqlite.Select<ZX.Model.CustomerMember>()
+                .Where(a => g.sqlite.Select<ZX.Model.CustomerCheckupGroup>().Any(b => b.MemberId == a.MemberId))
+                .ToUpdate()
+                .Set(a => a.Phone, "123123")
+                .ToSql();
+
             var sklgjlskdg = g.sqlite.Select<ZX.Model.CustomerMember>()
                 .Where(a => a.CheckupGroups.AsSelect().Any())
                 .ToSql();
@@ -746,17 +762,17 @@ namespace FreeSql.Tests
 
             //var testaddlist = new List<NewsArticle>();
             //for(var a = 0; a < 133905; a++) {
-            //	testaddlist.Add(new NewsArticle {
-            //		ArticleTitle = "testaddlist_topic" + a,
-            //		Hits = a,
-            //	});
+            //    testaddlist.Add(new NewsArticle {
+            //        ArticleTitle = "testaddlist_topic" + a,
+            //        Hits = a,
+            //    });
             //}
             //g.sqlite.Insert<NewsArticle>(testaddlist)
-            //	//.NoneParameter()
-            //	.ExecuteAffrows();
+            //    //.NoneParameter()
+            //    .ExecuteAffrows();
 
 
-            g.mysql.Aop.ParseExpression = (s, e) =>
+            g.mysql.Aop.ParseExpression += (s, e) =>
             {
                 if (e.Expression.NodeType == ExpressionType.Call)
                 {
@@ -892,8 +908,6 @@ namespace FreeSql.Tests
 
 
 
-
-
             var ttt1 = g.sqlite.Select<Model1>().Where(a => a.Childs.AsSelect().Any(b => b.Title == "111")).ToList();
 
 
@@ -964,6 +978,29 @@ namespace FreeSql.Tests
                     sum = b.Sum(b.Key.yyyy),
                     sum2 = b.Sum(b.Value.TypeGuid)
                 });
+
+            var aggtolist21 = select
+                .GroupBy(a => new { a.Title, yyyy = string.Concat(a.CreateTime.Year, '-', a.CreateTime.Month) })
+                .ToDictionary(b => new
+                {
+                    b.Key.Title,
+                    b.Key.yyyy,
+
+                    cou = b.Count(),
+                    sum = b.Sum(b.Key.yyyy),
+                    sum2 = b.Sum(b.Value.TypeGuid)
+                }); 
+            var aggtolist22 = select
+                 .GroupBy(a => new { a.Title, yyyy = string.Concat(a.CreateTime.Year, '-', a.CreateTime.Month) })
+                 .ToDictionaryAsync(b => new
+                 {
+                     b.Key.Title,
+                     b.Key.yyyy,
+
+                     cou = b.Count(),
+                     sum = b.Sum(b.Key.yyyy),
+                     sum2 = b.Sum(b.Value.TypeGuid)
+                 }).Result;
 
             var aggsql3 = select
                 .GroupBy(a => a.Title)
@@ -1092,7 +1129,9 @@ namespace FreeSql.Tests
                 })
             };
 
-            g.mysql.GetRepository<Order>().Insert(neworder);
+            var repo = g.mysql.GetRepository<Order>();
+            repo.DbContextOptions.EnableAddOrUpdateNavigateList = true;
+            repo.Insert(neworder);
 
             var order = g.mysql.Select<Order>().Where(a => a.Id == neworder.Id).ToOne(); //查询订单表
             if (order == null)
@@ -1186,9 +1225,9 @@ namespace FreeSql.Tests
             //);
 
             //var sql4 = select.From<TestTypeInfo, TestTypeParentInfo>((a, b, c) => new SelectFrom()
-            //	.InnerJoin(a.TypeGuid == b.Guid)
-            //	.LeftJoin(c.Id == b.ParentId)
-            //	.Where(b.Name == "xxx"))
+            //    .InnerJoin(a.TypeGuid == b.Guid)
+            //    .LeftJoin(c.Id == b.ParentId)
+            //    .Where(b.Name == "xxx"))
             //.Where(a => a.Id == 1).ToSql();
 
             var sql4 = select.From<TestTypeInfo, TestTypeParentInfo>((s, b, c) => s

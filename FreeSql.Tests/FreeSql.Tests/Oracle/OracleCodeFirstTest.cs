@@ -1,7 +1,9 @@
 using FreeSql.DataAnnotations;
 using Newtonsoft.Json;
+using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using Xunit;
@@ -10,6 +12,168 @@ namespace FreeSql.Tests.Oracle
 {
     public class OracleCodeFirstTest
     {
+        [Fact]
+        public void NClob_StringLength_1()
+        {
+            var str1 = string.Join(",", Enumerable.Range(0, 10000).Select(a => "我是中国人"));
+
+            var item1 = new TS_NCLB02 { Data = str1 };
+            Assert.Equal(1, g.oracle.Insert(item1).ExecuteAffrows());
+
+            var item2 = g.oracle.Select<TS_NCLB02>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(str1, item2.Data);
+
+            //NoneParameter
+            item1 = new TS_NCLB02 { Data = str1 };
+            Assert.Throws<Exception>(() => g.oracle.Insert(item1).NoneParameter().ExecuteAffrows());
+            //Oracle.ManagedDataAccess.Client.OracleException:“ORA-01704: 字符串文字太长”
+        }
+        class TS_NCLB02
+        {
+            public Guid Id { get; set; }
+            [Column(StringLength = - 1)]
+            public string Data { get; set; }
+        }
+
+        [Fact]
+        public void NClob()
+        {
+            var str1 = string.Join(",", Enumerable.Range(0, 10000).Select(a => "我是中国人"));
+
+            var item1 = new TS_NCLB01 { Data = str1 };
+            Assert.Equal(1, g.oracle.Insert(item1).ExecuteAffrows());
+
+            var item2 = g.oracle.Select<TS_NCLB01>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(str1, item2.Data);
+
+            //NoneParameter
+            item1 = new TS_NCLB01 { Data = str1 };
+            Assert.Throws<Exception>(() => g.oracle.Insert(item1).NoneParameter().ExecuteAffrows());
+            //Oracle.ManagedDataAccess.Client.OracleException:“ORA-01704: 字符串文字太长”
+        }
+        class TS_NCLB01
+        {
+            public Guid Id { get; set; }
+            [Column(DbType = "nclob")]
+            public string Data { get; set; }
+        }
+        [Fact]
+        public void Clob()
+        {
+            var str1 = string.Join(",", Enumerable.Range(0, 10000).Select(a => "我是中国人"));
+
+            var item1 = new TS_CLB01 { Data = str1 };
+            Assert.Equal(1, g.oracle.Insert(item1).ExecuteAffrows());
+
+            var item2 = g.oracle.Select<TS_CLB01>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(str1, item2.Data);
+
+            //NoneParameter
+            item1 = new TS_CLB01 { Data = str1 };
+            Assert.Throws<Exception>(() => g.oracle.Insert(item1).NoneParameter().ExecuteAffrows());
+            //Oracle.ManagedDataAccess.Client.OracleException:“ORA-01704: 字符串文字太长”
+        }
+        class TS_CLB01
+        {
+            public Guid Id { get; set; }
+            [Column(DbType = "clob")]
+            public string Data { get; set; }
+        }
+        [Fact]
+        public void Blob()
+        {
+            var str1 = string.Join(",", Enumerable.Range(0, 10000).Select(a => "我是中国人"));
+            var data1 = Encoding.UTF8.GetBytes(str1);
+
+            var item1 = new TS_BLB01 { Data = data1 };
+            Assert.Equal(1, g.oracle.Insert(item1).ExecuteAffrows());
+
+            var item2 = g.oracle.Select<TS_BLB01>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(item1.Data.Length, item2.Data.Length);
+
+            var str2 = Encoding.UTF8.GetString(item2.Data);
+            Assert.Equal(str1, str2);
+
+            //NoneParameter
+            item1 = new TS_BLB01 { Data = data1 };
+            Assert.Throws<Exception>(() => g.oracle.Insert(item1).NoneParameter().ExecuteAffrows());
+            //Oracle.ManagedDataAccess.Client.OracleException:“ORA-01704: 字符串文字太长”
+        }
+        class TS_BLB01
+        {
+            public Guid Id { get; set; }
+            [MaxLength(-1)]
+            public byte[] Data { get; set; }
+        }
+        [Fact]
+        public void StringLength()
+        {
+            var dll = g.oracle.CodeFirst.GetComparisonDDLStatements<TS_SLTB>();
+            g.oracle.CodeFirst.SyncStructure<TS_SLTB>();
+        }
+        class TS_SLTB
+        {
+            public Guid Id { get; set; }
+            [Column(StringLength = 50)]
+            public string Title { get; set; }
+
+            [Column(IsNullable = false, StringLength = 50)]
+            public string TitleSub { get; set; }
+        }
+
+        [Fact]
+        public void 数字表_字段()
+        {
+            var sql = g.oracle.CodeFirst.GetComparisonDDLStatements<测试数字表>();
+            g.oracle.CodeFirst.SyncStructure<测试数字表>();
+
+            var item = new 测试数字表
+            {
+                标题 = "测试标题",
+                创建时间 = DateTime.Now
+            };
+            Assert.Equal(1, g.oracle.Insert<测试数字表>().AppendData(item).ExecuteAffrows());
+            Assert.NotEqual(Guid.Empty, item.编号);
+            var item2 = g.oracle.Select<测试数字表>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
+
+            item.标题 = "测试标题更新";
+            Assert.Equal(1, g.oracle.Update<测试数字表>().SetSource(item).ExecuteAffrows());
+            item2 = g.oracle.Select<测试数字表>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
+
+            item.标题 = "测试标题更新_repo";
+            var repo = g.oracle.GetRepository<测试数字表>();
+            Assert.Equal(1, repo.Update(item));
+            item2 = g.oracle.Select<测试数字表>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
+
+            item.标题 = "测试标题更新_repo22";
+            Assert.Equal(1, repo.Update(item));
+            item2 = g.oracle.Select<测试数字表>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
+        }
+        [Table(Name = "123tb")]
+        [OraclePrimaryKeyName("pk1_123tb")]
+        class 测试数字表
+        {
+            [Column(IsPrimary = true, Name = "123id")]
+            public Guid 编号 { get; set; }
+
+            [Column(Name = "123title")]
+            public string 标题 { get; set; }
+
+            [Column(Name = "123time")]
+            public DateTime 创建时间 { get; set; }
+        }
 
         [Fact]
         public void 中文表_字段()
@@ -25,6 +189,28 @@ namespace FreeSql.Tests.Oracle
             Assert.Equal(1, g.oracle.Insert<测试中文表>().AppendData(item).ExecuteAffrows());
             Assert.NotEqual(Guid.Empty, item.编号);
             var item2 = g.oracle.Select<测试中文表>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
+
+            item.标题 = "测试标题更新";
+            Assert.Equal(1, g.oracle.Update<测试中文表>().SetSource(item).ExecuteAffrows());
+            item2 = g.oracle.Select<测试中文表>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
+
+            item.标题 = "测试标题更新_repo";
+            var repo = g.oracle.GetRepository<测试中文表>();
+            Assert.Equal(1, repo.Update(item));
+            item2 = g.oracle.Select<测试中文表>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
+
+            item.标题 = "测试标题更新_repo22";
+            Assert.Equal(1, repo.Update(item));
+            item2 = g.oracle.Select<测试中文表>().Where(a => a.编号 == item.编号).First();
             Assert.NotNull(item2);
             Assert.Equal(item.编号, item2.编号);
             Assert.Equal(item.标题, item2.标题);
@@ -48,6 +234,7 @@ namespace FreeSql.Tests.Oracle
         {
             var sql = g.oracle.CodeFirst.GetComparisonDDLStatements<AddUniquesInfo>();
             g.oracle.CodeFirst.SyncStructure<AddUniquesInfo>();
+            //g.oracle.CodeFirst.SyncStructure(typeof(AddUniquesInfo), "AddUniquesInfo1");
         }
         [Table(Name = "AddUniquesInfo", OldName = "AddUniquesInfo2")]
         [Index("uk_phone", "phone", true)]
@@ -92,57 +279,7 @@ namespace FreeSql.Tests.Oracle
         {
 
             var sql = g.oracle.CodeFirst.GetComparisonDDLStatements<TableAllType>();
-            if (string.IsNullOrEmpty(sql) == false)
-            {
-                Assert.Equal(@"CREATE TABLE IF NOT EXISTS `cccddd`.`tb_alltype` ( 
-  `Id` INT(11) NOT NULL AUTO_INCREMENT, 
-  `Bool` BIT(1) NOT NULL, 
-  `SByte` TINYINT(3) NOT NULL, 
-  `Short` SMALLINT(6) NOT NULL, 
-  `Int` INT(11) NOT NULL, 
-  `Long` BIGINT(20) NOT NULL, 
-  `Byte` TINYINT(3) UNSIGNED NOT NULL, 
-  `UShort` SMALLINT(5) UNSIGNED NOT NULL, 
-  `UInt` INT(10) UNSIGNED NOT NULL, 
-  `ULong` BIGINT(20) UNSIGNED NOT NULL, 
-  `Double` DOUBLE NOT NULL, 
-  `Float` FLOAT NOT NULL, 
-  `Decimal` DECIMAL(10,2) NOT NULL, 
-  `TimeSpan` TIME NOT NULL, 
-  `DateTime` DATETIME NOT NULL, 
-  `Bytes` VARBINARY(255), 
-  `String` VARCHAR(255), 
-  `Guid` VARCHAR(36), 
-  `BoolNullable` BIT(1), 
-  `SByteNullable` TINYINT(3), 
-  `ShortNullable` SMALLINT(6), 
-  `IntNullable` INT(11), 
-  `testFielLongNullable` BIGINT(20), 
-  `ByteNullable` TINYINT(3) UNSIGNED, 
-  `UShortNullable` SMALLINT(5) UNSIGNED, 
-  `UIntNullable` INT(10) UNSIGNED, 
-  `ULongNullable` BIGINT(20) UNSIGNED, 
-  `DoubleNullable` DOUBLE, 
-  `FloatNullable` FLOAT, 
-  `DecimalNullable` DECIMAL(10,2), 
-  `TimeSpanNullable` TIME, 
-  `DateTimeNullable` DATETIME, 
-  `GuidNullable` VARCHAR(36), 
-  `Point` POINT, 
-  `LineString` LINESTRING, 
-  `Polygon` POLYGON, 
-  `MultiPoint` MULTIPOINT, 
-  `MultiLineString` MULTILINESTRING, 
-  `MultiPolygon` MULTIPOLYGON, 
-  `Enum1` ENUM('E1','E2','E3') NOT NULL, 
-  `Enum1Nullable` ENUM('E1','E2','E3'), 
-  `Enum2` SET('F1','F2','F3') NOT NULL, 
-  `Enum2Nullable` SET('F1','F2','F3'), 
-  PRIMARY KEY (`Id`)
-) Engine=InnoDB;
-", sql);
-            }
-
+            Assert.True(string.IsNullOrEmpty(sql)); //测试运行两次后
             //sql = g.oracle.CodeFirst.GetComparisonDDLStatements<Tb_alltype>();
         }
 
@@ -184,7 +321,8 @@ namespace FreeSql.Tests.Oracle
                 SByteNullable = 99,
                 Short = short.MaxValue,
                 ShortNullable = short.MinValue,
-                String = "我是中国人string",
+                String = "我是中国人string'\\?!@#$%^&*()_+{}}{~?><<>",
+                Char = 'X',
                 TimeSpan = TimeSpan.FromSeconds(999),
                 TimeSpanNullable = TimeSpan.FromSeconds(60),
                 UInt = uint.MaxValue,
@@ -201,8 +339,16 @@ namespace FreeSql.Tests.Oracle
 
             item2.Id = (int)insert.AppendData(item2).ExecuteIdentity();
             var newitem2 = select.Where(a => a.Id == item2.Id).ToOne();
+            Assert.Equal(item2.String, newitem2.String);
+            Assert.Equal(item2.Char, newitem2.Char);
+
+            item2.Id = (int)insert.NoneParameter().AppendData(item2).ExecuteIdentity();
+            newitem2 = select.Where(a => a.Id == item2.Id).ToOne();
+            Assert.Equal(item2.String, newitem2.String);
+            Assert.Equal(item2.Char, newitem2.Char);
 
             var items = select.ToList();
+            var itemstb = select.ToDataTable();
         }
 
         [Table(Name = "tb_alltype")]
@@ -234,6 +380,7 @@ namespace FreeSql.Tests.Oracle
 
             public byte[] Bytes { get; set; }
             public string String { get; set; }
+            public char Char { get; set; }
             public Guid Guid { get; set; }
 
             public bool? BoolNullable { get; set; }

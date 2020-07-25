@@ -1,4 +1,5 @@
 ﻿using FreeSql.Internal;
+using FreeSql.Internal.Model;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -15,35 +16,36 @@ namespace FreeSql.Sqlite
         public SqliteCodeFirst(IFreeSql orm, CommonUtils commonUtils, CommonExpression commonExpression) : base(orm, commonUtils, commonExpression) { }
 
         static object _dicCsToDbLock = new object();
-        static Dictionary<string, (DbType type, string dbtype, string dbtypeFull, bool? isUnsigned, bool? isnullable, object defaultValue)> _dicCsToDb = new Dictionary<string, (DbType type, string dbtype, string dbtypeFull, bool? isUnsigned, bool? isnullable, object defaultValue)>() {
-                { typeof(bool).FullName,  (DbType.Boolean, "boolean","boolean NOT NULL", null, false, false) },{ typeof(bool?).FullName,  (DbType.Boolean, "boolean","boolean", null, true, null) },
+        static Dictionary<string, CsToDb<DbType>> _dicCsToDb = new Dictionary<string, CsToDb<DbType>>() {
+                { typeof(bool).FullName, CsToDb.New(DbType.Boolean, "boolean","boolean NOT NULL", null, false, false) },{ typeof(bool?).FullName, CsToDb.New(DbType.Boolean, "boolean","boolean", null, true, null) },
 
-                { typeof(sbyte).FullName,  (DbType.SByte, "smallint", "smallint NOT NULL", false, false, 0) },{ typeof(sbyte?).FullName,  (DbType.SByte, "smallint", "smallint", false, true, null) },
-                { typeof(short).FullName,  (DbType.Int16, "smallint","smallint NOT NULL", false, false, 0) },{ typeof(short?).FullName,  (DbType.Int16, "smallint", "smallint", false, true, null) },
-                { typeof(int).FullName,  (DbType.Int32, "integer", "integer NOT NULL", false, false, 0) },{ typeof(int?).FullName,  (DbType.Int32, "integer", "integer", false, true, null) },
-                { typeof(long).FullName,  (DbType.Int64, "integer","integer NOT NULL", false, false, 0) },{ typeof(long?).FullName,  (DbType.Int64, "integer","integer", false, true, null) },
+                { typeof(sbyte).FullName, CsToDb.New(DbType.SByte, "smallint", "smallint NOT NULL", false, false, 0) },{ typeof(sbyte?).FullName, CsToDb.New(DbType.SByte, "smallint", "smallint", false, true, null) },
+                { typeof(short).FullName, CsToDb.New(DbType.Int16, "smallint","smallint NOT NULL", false, false, 0) },{ typeof(short?).FullName, CsToDb.New(DbType.Int16, "smallint", "smallint", false, true, null) },
+                { typeof(int).FullName, CsToDb.New(DbType.Int32, "integer", "integer NOT NULL", false, false, 0) },{ typeof(int?).FullName, CsToDb.New(DbType.Int32, "integer", "integer", false, true, null) },
+                { typeof(long).FullName, CsToDb.New(DbType.Int64, "integer","integer NOT NULL", false, false, 0) },{ typeof(long?).FullName, CsToDb.New(DbType.Int64, "integer","integer", false, true, null) },
 
-                { typeof(byte).FullName,  (DbType.Byte, "int2","int2 NOT NULL", true, false, 0) },{ typeof(byte?).FullName,  (DbType.Byte, "int2","int2", true, true, null) },
-                { typeof(ushort).FullName,  (DbType.UInt16, "unsigned","unsigned NOT NULL", true, false, 0) },{ typeof(ushort?).FullName,  (DbType.UInt16, "unsigned", "unsigned", true, true, null) },
-                { typeof(uint).FullName,  (DbType.Decimal, "decimal(10,0)", "decimal(10,0) NOT NULL", true, false, 0) },{ typeof(uint?).FullName,  (DbType.Decimal, "decimal(10,0)", "decimal(10,0)", true, true, null) },
-                { typeof(ulong).FullName,  (DbType.Decimal, "decimal(21,0)", "decimal(21,0) NOT NULL", true, false, 0) },{ typeof(ulong?).FullName,  (DbType.Decimal, "decimal(21,0)", "decimal(21,0)", true, true, null) },
+                { typeof(byte).FullName, CsToDb.New(DbType.Byte, "int2","int2 NOT NULL", true, false, 0) },{ typeof(byte?).FullName, CsToDb.New(DbType.Byte, "int2","int2", true, true, null) },
+                { typeof(ushort).FullName, CsToDb.New(DbType.UInt16, "unsigned","unsigned NOT NULL", true, false, 0) },{ typeof(ushort?).FullName, CsToDb.New(DbType.UInt16, "unsigned", "unsigned", true, true, null) },
+                { typeof(uint).FullName, CsToDb.New(DbType.Decimal, "decimal(10,0)", "decimal(10,0) NOT NULL", true, false, 0) },{ typeof(uint?).FullName, CsToDb.New(DbType.Decimal, "decimal(10,0)", "decimal(10,0)", true, true, null) },
+                { typeof(ulong).FullName, CsToDb.New(DbType.Decimal, "decimal(21,0)", "decimal(21,0) NOT NULL", true, false, 0) },{ typeof(ulong?).FullName, CsToDb.New(DbType.Decimal, "decimal(21,0)", "decimal(21,0)", true, true, null) },
 
-                { typeof(double).FullName,  (DbType.Double, "double", "double NOT NULL", false, false, 0) },{ typeof(double?).FullName,  (DbType.Double, "double", "double", false, true, null) },
-                { typeof(float).FullName,  (DbType.Single, "float","float NOT NULL", false, false, 0) },{ typeof(float?).FullName,  (DbType.Single, "float","float", false, true, null) },
-                { typeof(decimal).FullName,  (DbType.Decimal, "decimal", "decimal(10,2) NOT NULL", false, false, 0) },{ typeof(decimal?).FullName,  (DbType.Decimal, "decimal", "decimal(10,2)", false, true, null) },
+                { typeof(double).FullName, CsToDb.New(DbType.Double, "double", "double NOT NULL", false, false, 0) },{ typeof(double?).FullName, CsToDb.New(DbType.Double, "double", "double", false, true, null) },
+                { typeof(float).FullName, CsToDb.New(DbType.Single, "float","float NOT NULL", false, false, 0) },{ typeof(float?).FullName, CsToDb.New(DbType.Single, "float","float", false, true, null) },
+                { typeof(decimal).FullName, CsToDb.New(DbType.Decimal, "decimal", "decimal(10,2) NOT NULL", false, false, 0) },{ typeof(decimal?).FullName, CsToDb.New(DbType.Decimal, "decimal", "decimal(10,2)", false, true, null) },
 
-                { typeof(TimeSpan).FullName,  (DbType.Time, "bigint","bigint NOT NULL", false, false, 0) },{ typeof(TimeSpan?).FullName,  (DbType.Time, "bigint", "bigint",false, true, null) },
-                { typeof(DateTime).FullName,  (DbType.DateTime, "datetime", "datetime NOT NULL", false, false, new DateTime(1970,1,1)) },{ typeof(DateTime?).FullName,  (DbType.DateTime, "datetime", "datetime", false, true, null) },
+                { typeof(TimeSpan).FullName, CsToDb.New(DbType.Time, "bigint","bigint NOT NULL", false, false, 0) },{ typeof(TimeSpan?).FullName, CsToDb.New(DbType.Time, "bigint", "bigint",false, true, null) },
+                { typeof(DateTime).FullName, CsToDb.New(DbType.DateTime, "datetime", "datetime NOT NULL", false, false, new DateTime(1970,1,1)) },{ typeof(DateTime?).FullName, CsToDb.New(DbType.DateTime, "datetime", "datetime", false, true, null) },
 
-                { typeof(byte[]).FullName,  (DbType.Binary, "blob", "blob", false, null, new byte[0]) },
-                { typeof(string).FullName,  (DbType.String, "nvarchar", "nvarchar(255)", false, null, "") },
+                { typeof(byte[]).FullName, CsToDb.New(DbType.Binary, "blob", "blob", false, null, new byte[0]) },
+                { typeof(string).FullName, CsToDb.New(DbType.String, "nvarchar", "nvarchar(255)", false, null, "") },
+                { typeof(char).FullName, CsToDb.New(DbType.AnsiString, "char", "char(1)", false, null, '\0') },
 
-                { typeof(Guid).FullName,  (DbType.Guid, "character", "character(36) NOT NULL", false, false, Guid.Empty) },{ typeof(Guid?).FullName,  (DbType.Guid, "character", "character(36)", false, true, null) },
+                { typeof(Guid).FullName, CsToDb.New(DbType.Guid, "character", "character(36) NOT NULL", false, false, Guid.Empty) },{ typeof(Guid?).FullName, CsToDb.New(DbType.Guid, "character", "character(36)", false, true, null) },
             };
 
-        public override (int type, string dbtype, string dbtypeFull, bool? isnullable, object defaultValue)? GetDbInfo(Type type)
+        public override DbInfoResult GetDbInfo(Type type)
         {
-            if (_dicCsToDb.TryGetValue(type.FullName, out var trydc)) return new (int, string, string, bool?, object)?(((int)trydc.type, trydc.dbtype, trydc.dbtypeFull, trydc.isnullable, trydc.defaultValue));
+            if (_dicCsToDb.TryGetValue(type.FullName, out var trydc)) return new DbInfoResult((int)trydc.type, trydc.dbtype, trydc.dbtypeFull, trydc.isnullable, trydc.defaultValue);
             if (type.IsArray) return null;
             var enumType = type.IsEnum ? type : null;
             if (enumType == null && type.IsNullableType())
@@ -54,8 +56,8 @@ namespace FreeSql.Sqlite
             if (enumType != null)
             {
                 var newItem = enumType.GetCustomAttributes(typeof(FlagsAttribute), false).Any() ?
-                    (DbType.Int64, "bigint", $"bigint{(type.IsEnum ? " NOT NULL" : "")}", false, type.IsEnum ? false : true, Enum.GetValues(enumType).GetValue(0)) :
-                    (DbType.Int32, "mediumint", $"mediumint{(type.IsEnum ? " NOT NULL" : "")}", false, type.IsEnum ? false : true, Enum.GetValues(enumType).GetValue(0));
+                    CsToDb.New(DbType.Int64, "bigint", $"bigint{(type.IsEnum ? " NOT NULL" : "")}", false, type.IsEnum ? false : true, enumType.CreateInstanceGetDefaultValue()) :
+                    CsToDb.New(DbType.Int32, "mediumint", $"mediumint{(type.IsEnum ? " NOT NULL" : "")}", false, type.IsEnum ? false : true, enumType.CreateInstanceGetDefaultValue());
                 if (_dicCsToDb.ContainsKey(type.FullName) == false)
                 {
                     lock (_dicCsToDbLock)
@@ -64,12 +66,12 @@ namespace FreeSql.Sqlite
                             _dicCsToDb.Add(type.FullName, newItem);
                     }
                 }
-                return ((int)newItem.Item1, newItem.Item2, newItem.Item3, newItem.Item5, newItem.Item6);
+                return new DbInfoResult((int)newItem.type, newItem.dbtype, newItem.dbtypeFull, newItem.isnullable, newItem.defaultValue);
             }
             return null;
         }
 
-        protected override string GetComparisonDDLStatements(params (Type entityType, string tableName)[] objects)
+        protected override string GetComparisonDDLStatements(params TypeAndName[] objects)
         {
             var sb = new StringBuilder();
             var sbDeclare = new StringBuilder();
@@ -134,7 +136,7 @@ namespace FreeSql.Sqlite
                         {
                             sb.Append("CREATE ");
                             if (uk.IsUnique) sb.Append("UNIQUE ");
-                            sb.Append("INDEX ").Append(_commonUtils.QuoteSqlName(uk.Name)).Append(" ON ").Append(tbname[1]).Append("(");
+                            sb.Append("INDEX ").Append(_commonUtils.QuoteSqlName(ReplaceIndexName(uk.Name, tbname[1]))).Append(" ON ").Append(tbname[1]).Append("(");
                             foreach (var tbcol in uk.Columns)
                             {
                                 sb.Append(_commonUtils.QuoteSqlName(tbcol.Column.Attribute.Name));
@@ -183,9 +185,10 @@ namespace FreeSql.Sqlite
                 {
                     foreach (var tbcol in tb.ColumnsByPosition)
                     {
+                        if (istmpatler) break;
                         var dbtypeNoneNotNull = Regex.Replace(tbcol.Attribute.DbType, @"NOT\s+NULL", "NULL");
                         if (tbstruct.TryGetValue(tbcol.Attribute.Name, out var tbstructcol) ||
-                        string.IsNullOrEmpty(tbcol.Attribute.OldName) == false && tbstruct.TryGetValue(tbcol.Attribute.OldName, out tbstructcol))
+                            string.IsNullOrEmpty(tbcol.Attribute.OldName) == false && tbstruct.TryGetValue(tbcol.Attribute.OldName, out tbstructcol))
                         {
                             if (tbcol.Attribute.DbType.StartsWith(tbstructcol.sqlType, StringComparison.CurrentCultureIgnoreCase) == false)
                                 istmpatler = true;
@@ -201,6 +204,9 @@ namespace FreeSql.Sqlite
                         //添加列
                         istmpatler = true;
                     }
+                }
+                if (istmpatler == false)
+                {
                     var dsuk = new List<string[]>();
                     var dbIndexes = _orm.Ado.ExecuteArray(CommandType.Text, $"PRAGMA {_commonUtils.QuoteSqlName(tbtmp[0])}.INDEX_LIST(\"{tbtmp[1]}\")");
                     foreach (var dbIndex in dbIndexes)
@@ -218,7 +224,8 @@ namespace FreeSql.Sqlite
                     foreach (var uk in tb.Indexes)
                     {
                         if (string.IsNullOrEmpty(uk.Name) || uk.Columns.Any() == false) continue;
-                        var dsukfind1 = dsuk.Where(a => string.Compare(a[1], uk.Name, true) == 0).ToArray();
+                        var ukname = ReplaceIndexName(uk.Name, tbname[1]);
+                        var dsukfind1 = dsuk.Where(a => string.Compare(a[1], ukname, true) == 0).ToArray();
                         if (dsukfind1.Any() == false || dsukfind1.Length != uk.Columns.Length || dsukfind1.Where(a => (a[3] == "1") == uk.IsUnique && uk.Columns.Where(b => string.Compare(b.Column.Attribute.Name, a[0], true) == 0 && (a[2] == "1") == b.IsDesc).Any()).Count() != uk.Columns.Length)
                             istmpatler = true;
                     }
@@ -285,7 +292,7 @@ namespace FreeSql.Sqlite
                 {
                     sb.Append("CREATE ");
                     if (uk.IsUnique) sb.Append("UNIQUE ");
-                    sb.Append("INDEX ").Append(_commonUtils.QuoteSqlName(uk.Name)).Append(" ON \"").Append(tablenameOnlyTb).Append("\"(");
+                    sb.Append("INDEX ").Append(_commonUtils.QuoteSqlName(ReplaceIndexName(uk.Name, tbname[1]))).Append(" ON \"").Append(tablenameOnlyTb).Append("\"(");
                     foreach (var tbcol in uk.Columns)
                     {
                         sb.Append(_commonUtils.QuoteSqlName(tbcol.Column.Attribute.Name));

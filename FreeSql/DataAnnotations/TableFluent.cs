@@ -8,21 +8,16 @@ namespace FreeSql.DataAnnotations
 {
     public class TableFluent
     {
-
-        public TableFluent(ICodeFirst codeFirst, Type entityType, TableAttribute table)
+        public TableFluent(Type entityType, TableAttribute table)
         {
-            _codeFirst = codeFirst;
             _entityType = entityType;
             _properties = _entityType.GetPropertiesDictIgnoreCase();
             _table = table;
         }
 
-        ICodeFirst _codeFirst;
         Type _entityType;
         Dictionary<string, PropertyInfo> _properties;
         TableAttribute _table;
-
-        public void ConfigEntity<T2>(Action<TableFluent<T2>> fluent2) => _codeFirst.ConfigEntity<T2>(fluent2);
 
         /// <summary>
         /// 数据库表名
@@ -52,9 +47,9 @@ namespace FreeSql.DataAnnotations
 
         public ColumnFluent Property(string proto)
         {
-            if (_properties.ContainsKey(proto) == false) throw new KeyNotFoundException($"找不到属性名 {proto}");
-            var col = _table._columns.GetOrAdd(proto, name => new ColumnAttribute { Name = proto });
-            return new ColumnFluent(col);
+            if (_properties.TryGetValue(proto, out var tryProto) == false) throw new KeyNotFoundException($"找不到属性名 {proto}");
+            var col = _table._columns.GetOrAdd(tryProto.Name, name => new ColumnAttribute { Name = proto });
+            return new ColumnFluent(col, tryProto, _entityType);
         }
 
         /// <summary>
@@ -85,23 +80,23 @@ namespace FreeSql.DataAnnotations
             _table._indexs.AddOrUpdate(name, idx, (_, __) => idx);
             return this;
         }
+        public TableFluent IndexRemove(string name)
+        {
+            _table._indexs.TryRemove(name, out var oldidx);
+            return this;
+        }
     }
 
     public class TableFluent<T>
     {
-
-        public TableFluent(ICodeFirst codeFirst, TableAttribute table)
+        public TableFluent(TableAttribute table)
         {
-            _codeFirst = codeFirst;
             _properties = typeof(T).GetPropertiesDictIgnoreCase();
             _table = table;
         }
 
-        ICodeFirst _codeFirst;
         Dictionary<string, PropertyInfo> _properties;
         TableAttribute _table;
-
-        public void ConfigEntity<T2>(Action<TableFluent<T2>> fluent2) => _codeFirst.ConfigEntity<T2>(fluent2);
 
         /// <summary>
         /// 数据库表名
@@ -131,7 +126,9 @@ namespace FreeSql.DataAnnotations
 
         public ColumnFluent Property<TProto>(Expression<Func<T, TProto>> column)
         {
-            var proto = (column.Body as MemberExpression)?.Member;
+            var exp = column?.Body;
+            if (exp?.NodeType == ExpressionType.Convert) exp = (exp as UnaryExpression)?.Operand;
+            var proto = (exp as MemberExpression)?.Member;
             if (proto == null) throw new FormatException($"错误的表达式格式 {column}");
             return Property(proto.Name);
         }
@@ -139,7 +136,7 @@ namespace FreeSql.DataAnnotations
         {
             if (_properties.TryGetValue(proto, out var tryProto) == false) throw new KeyNotFoundException($"找不到属性名 {proto}");
             var col = _table._columns.GetOrAdd(tryProto.Name, name => new ColumnAttribute { Name = proto });
-            return new ColumnFluent(col);
+            return new ColumnFluent(col, tryProto, typeof(T));
         }
 
         /// <summary>
@@ -152,7 +149,9 @@ namespace FreeSql.DataAnnotations
         /// <returns></returns>
         public TableFluent<T> Navigate<TProto>(Expression<Func<T, TProto>> proto, string bind, Type manyToMany = null)
         {
-            var member = (proto.Body as MemberExpression)?.Member;
+            var exp = proto?.Body;
+            if (exp.NodeType == ExpressionType.Convert) exp = (exp as UnaryExpression)?.Operand;
+            var member = (exp as MemberExpression)?.Member;
             if (member == null) throw new FormatException($"错误的表达式格式 {proto}");
             return Navigate(member.Name, bind, manyToMany);
         }

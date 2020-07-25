@@ -1,4 +1,4 @@
-﻿using SafeObjectPool;
+﻿using FreeSql.Internal.ObjectPool;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -23,16 +23,15 @@ namespace FreeSql.Odbc.Dameng
         {
             this.UserId = OdbcDamengConnectionPool.GetUserId(connectionString);
 
-            var policy = new OdbcOracleConnectionPoolPolicy
+            this.availableHandler = availableHandler;
+            this.unavailableHandler = unavailableHandler;
+            var policy = new OdbcDamengConnectionPoolPolicy
             {
                 _pool = this,
                 Name = name
             };
             this.Policy = policy;
             policy.ConnectionString = connectionString;
-
-            this.availableHandler = availableHandler;
-            this.unavailableHandler = unavailableHandler;
         }
 
         public static string GetUserId(string connectionString)
@@ -63,7 +62,7 @@ namespace FreeSql.Odbc.Dameng
         }
     }
 
-    class OdbcOracleConnectionPoolPolicy : IPolicy<DbConnection>
+    class OdbcDamengConnectionPoolPolicy : IPolicy<DbConnection>
     {
 
         internal OdbcDamengConnectionPool _pool;
@@ -73,6 +72,7 @@ namespace FreeSql.Odbc.Dameng
         public TimeSpan IdleTimeout { get; set; } = TimeSpan.FromSeconds(20);
         public int AsyncGetCapacity { get; set; } = 10000;
         public bool IsThrowGetTimeoutException { get; set; } = true;
+        public bool IsAutoDisposeWithSystem { get; set; } = true;
         public int CheckAvailableInterval { get; set; } = 5;
 
         static ConcurrentDictionary<string, int> dicConnStrIncr = new ConcurrentDictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
@@ -198,7 +198,7 @@ namespace FreeSql.Odbc.Dameng
 
         public void OnReturn(Object<DbConnection> obj)
         {
-
+            //if (obj?.Value != null && obj.Value.State != ConnectionState.Closed) try { obj.Value.Close(); } catch { }
         }
 
         public void OnAvailable()

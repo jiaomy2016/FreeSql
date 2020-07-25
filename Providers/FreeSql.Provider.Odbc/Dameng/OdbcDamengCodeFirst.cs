@@ -19,37 +19,38 @@ namespace FreeSql.Odbc.Dameng
         public OdbcDamengCodeFirst(IFreeSql orm, CommonUtils commonUtils, CommonExpression commonExpression) : base(orm, commonUtils, commonExpression) { }
 
         static object _dicCsToDbLock = new object();
-        static Dictionary<string, (OdbcType type, string dbtype, string dbtypeFull, bool? isUnsigned, bool? isnullable, object defaultValue)> _dicCsToDb = new Dictionary<string, (OdbcType type, string dbtype, string dbtypeFull, bool? isUnsigned, bool? isnullable, object defaultValue)>() {
-                { typeof(bool).FullName,  (OdbcType.Bit, "number","number(1) NOT NULL", null, false, false) },{ typeof(bool?).FullName,  (OdbcType.Bit, "number","number(1) NULL", null, true, null) },
+        static Dictionary<string, CsToDb<OdbcType>> _dicCsToDb = new Dictionary<string, CsToDb<OdbcType>>() {
+                { typeof(bool).FullName, CsToDb.New(OdbcType.Bit, "number","number(1) NOT NULL", null, false, false) },{ typeof(bool?).FullName, CsToDb.New(OdbcType.Bit, "number","number(1) NULL", null, true, null) },
 
-                { typeof(sbyte).FullName,  (OdbcType.SmallInt, "number", "number(4) NOT NULL", false, false, 0) },{ typeof(sbyte?).FullName,  (OdbcType.SmallInt, "number", "number(4) NULL", false, true, null) },
-                { typeof(short).FullName,  (OdbcType.SmallInt, "number","number(6) NOT NULL", false, false, 0) },{ typeof(short?).FullName,  (OdbcType.SmallInt, "number", "number(6) NULL", false, true, null) },
-                { typeof(int).FullName,  (OdbcType.Int, "number", "number(11) NOT NULL", false, false, 0) },{ typeof(int?).FullName,  (OdbcType.Int, "number", "number(11) NULL", false, true, null) },
-                { typeof(long).FullName,  (OdbcType.BigInt, "number","number(21) NOT NULL", false, false, 0) },{ typeof(long?).FullName,  (OdbcType.BigInt, "number","number(21) NULL", false, true, null) },
+                { typeof(sbyte).FullName, CsToDb.New(OdbcType.SmallInt, "number", "number(4) NOT NULL", false, false, 0) },{ typeof(sbyte?).FullName, CsToDb.New(OdbcType.SmallInt, "number", "number(4) NULL", false, true, null) },
+                { typeof(short).FullName, CsToDb.New(OdbcType.SmallInt, "number","number(6) NOT NULL", false, false, 0) },{ typeof(short?).FullName, CsToDb.New(OdbcType.SmallInt, "number", "number(6) NULL", false, true, null) },
+                { typeof(int).FullName, CsToDb.New(OdbcType.Int, "number", "number(11) NOT NULL", false, false, 0) },{ typeof(int?).FullName, CsToDb.New(OdbcType.Int, "number", "number(11) NULL", false, true, null) },
+                { typeof(long).FullName, CsToDb.New(OdbcType.BigInt, "number","number(21) NOT NULL", false, false, 0) },{ typeof(long?).FullName, CsToDb.New(OdbcType.BigInt, "number","number(21) NULL", false, true, null) },
 
-                { typeof(byte).FullName,  (OdbcType.TinyInt, "number","number(3) NOT NULL", true, false, 0) },{ typeof(byte?).FullName,  (OdbcType.TinyInt, "number","number(3) NULL", true, true, null) },
-                { typeof(ushort).FullName,  (OdbcType.Int, "number","number(5) NOT NULL", true, false, 0) },{ typeof(ushort?).FullName,  (OdbcType.Int, "number", "number(5) NULL", true, true, null) },
-                { typeof(uint).FullName,  (OdbcType.BigInt, "number", "number(10) NOT NULL", true, false, 0) },{ typeof(uint?).FullName,  (OdbcType.BigInt, "number", "number(10) NULL", true, true, null) },
-                { typeof(ulong).FullName,  (OdbcType.Decimal, "number", "number(20) NOT NULL", true, false, 0) },{ typeof(ulong?).FullName,  (OdbcType.Decimal, "number", "number(20) NULL", true, true, null) },
+                { typeof(byte).FullName, CsToDb.New(OdbcType.TinyInt, "number","number(3) NOT NULL", true, false, 0) },{ typeof(byte?).FullName, CsToDb.New(OdbcType.TinyInt, "number","number(3) NULL", true, true, null) },
+                { typeof(ushort).FullName, CsToDb.New(OdbcType.Int, "number","number(5) NOT NULL", true, false, 0) },{ typeof(ushort?).FullName, CsToDb.New(OdbcType.Int, "number", "number(5) NULL", true, true, null) },
+                { typeof(uint).FullName, CsToDb.New(OdbcType.BigInt, "number", "number(10) NOT NULL", true, false, 0) },{ typeof(uint?).FullName, CsToDb.New(OdbcType.BigInt, "number", "number(10) NULL", true, true, null) },
+                { typeof(ulong).FullName, CsToDb.New(OdbcType.Decimal, "number", "number(20) NOT NULL", true, false, 0) },{ typeof(ulong?).FullName, CsToDb.New(OdbcType.Decimal, "number", "number(20) NULL", true, true, null) },
 
-                { typeof(double).FullName,  (OdbcType.Double, "double", "double NOT NULL", false, false, 0) },{ typeof(double?).FullName,  (OdbcType.Double, "double", "double NULL", false, true, null) },
-                { typeof(float).FullName,  (OdbcType.Real, "real","real NOT NULL", false, false, 0) },{ typeof(float?).FullName,  (OdbcType.Real, "real","real NULL", false, true, null) },
-                { typeof(decimal).FullName,  (OdbcType.Decimal, "number", "number(10,2) NOT NULL", false, false, 0) },{ typeof(decimal?).FullName,  (OdbcType.Decimal, "number", "number(10,2) NULL", false, true, null) },
+                { typeof(double).FullName, CsToDb.New(OdbcType.Double, "double", "double NOT NULL", false, false, 0) },{ typeof(double?).FullName, CsToDb.New(OdbcType.Double, "double", "double NULL", false, true, null) },
+                { typeof(float).FullName, CsToDb.New(OdbcType.Real, "real","real NOT NULL", false, false, 0) },{ typeof(float?).FullName, CsToDb.New(OdbcType.Real, "real","real NULL", false, true, null) },
+                { typeof(decimal).FullName, CsToDb.New(OdbcType.Decimal, "number", "number(10,2) NOT NULL", false, false, 0) },{ typeof(decimal?).FullName, CsToDb.New(OdbcType.Decimal, "number", "number(10,2) NULL", false, true, null) },
 
                 //达梦8 ODBC 不支持 TimeSpan
-                //{ typeof(TimeSpan).FullName,  (OdbcType.Time, "interval day to second","interval day(2) to second(6) NOT NULL", false, false, 0) },{ typeof(TimeSpan?).FullName,  (OdbcType.Time, "interval day to second", "interval day(2) to second(6) NULL",false, true, null) },
-                { typeof(DateTime).FullName,  (OdbcType.DateTime, "timestamp", "timestamp(6) NOT NULL", false, false, new DateTime(1970,1,1)) },{ typeof(DateTime?).FullName,  (OdbcType.DateTime, "timestamp", "timestamp(6) NULL", false, true, null) },
-                { typeof(DateTimeOffset).FullName,  (OdbcType.DateTime, "timestamp", "timestamp(6) NOT NULL", false, false, new DateTime(1970,1,1)) },{ typeof(DateTimeOffset?).FullName,  (OdbcType.DateTime, "timestamp", "timestamp(6) NULL", false, true, null) },
+                //{ typeof(TimeSpan).FullName, CsToDb.NewInfo(OdbcType.Time, "interval day to second","interval day(2) to second(6) NOT NULL", false, false, 0) },{ typeof(TimeSpan?).FullName,  (OdbcType.Time, "interval day to second", "interval day(2) to second(6) NULL",false, true, null) },
+                { typeof(DateTime).FullName, CsToDb.New(OdbcType.DateTime, "timestamp", "timestamp(6) NOT NULL", false, false, new DateTime(1970,1,1)) },{ typeof(DateTime?).FullName, CsToDb.New(OdbcType.DateTime, "timestamp", "timestamp(6) NULL", false, true, null) },
+                { typeof(DateTimeOffset).FullName, CsToDb.New(OdbcType.DateTime, "timestamp", "timestamp(6) NOT NULL", false, false, new DateTime(1970,1,1)) },{ typeof(DateTimeOffset?).FullName, CsToDb.New(OdbcType.DateTime, "timestamp", "timestamp(6) NULL", false, true, null) },
 
-                { typeof(byte[]).FullName,  (OdbcType.VarBinary, "blob", "blob NULL", false, null, new byte[0]) },
-                { typeof(string).FullName,  (OdbcType.NVarChar, "nvarchar2", "nvarchar2(255) NULL", false, null, "") },
+                { typeof(byte[]).FullName, CsToDb.New(OdbcType.VarBinary, "blob", "blob NULL", false, null, new byte[0]) },
+                { typeof(string).FullName, CsToDb.New(OdbcType.NVarChar, "nvarchar2", "nvarchar2(255) NULL", false, null, "") },
+                { typeof(char).FullName, CsToDb.New(OdbcType.Char, "char", "char(1) NULL", false, null, '\0') },
 
-                { typeof(Guid).FullName,  (OdbcType.Char, "char", "char(36) NOT NULL", false, false, Guid.Empty) },{ typeof(Guid?).FullName,  (OdbcType.Char, "char", "char(36) NULL", false, true, null) },
+                { typeof(Guid).FullName, CsToDb.New(OdbcType.Char, "char", "char(36) NOT NULL", false, false, Guid.Empty) },{ typeof(Guid?).FullName, CsToDb.New(OdbcType.Char, "char", "char(36) NULL", false, true, null) },
             };
 
-        public override (int type, string dbtype, string dbtypeFull, bool? isnullable, object defaultValue)? GetDbInfo(Type type)
+        public override DbInfoResult GetDbInfo(Type type)
         {
-            if (_dicCsToDb.TryGetValue(type.FullName, out var trydc)) return new (int, string, string, bool?, object)?(((int)trydc.type, trydc.dbtype, trydc.dbtypeFull, trydc.isnullable, trydc.defaultValue));
+            if (_dicCsToDb.TryGetValue(type.FullName, out var trydc)) return new DbInfoResult((int)trydc.type, trydc.dbtype, trydc.dbtypeFull, trydc.isnullable, trydc.defaultValue);
             if (type.IsArray) return null;
             var enumType = type.IsEnum ? type : null;
             if (enumType == null && type.IsNullableType())
@@ -60,8 +61,8 @@ namespace FreeSql.Odbc.Dameng
             if (enumType != null)
             {
                 var newItem = enumType.GetCustomAttributes(typeof(FlagsAttribute), false).Any() ?
-                    (OdbcType.Int, "number", $"number(16){(type.IsEnum ? " NOT NULL" : "")}", false, type.IsEnum ? false : true, Enum.GetValues(enumType).GetValue(0)) :
-                    (OdbcType.BigInt, "number", $"number(32){(type.IsEnum ? " NOT NULL" : "")}", false, type.IsEnum ? false : true, Enum.GetValues(enumType).GetValue(0));
+                    CsToDb.New(OdbcType.Int, "number", $"number(16){(type.IsEnum ? " NOT NULL" : "")}", false, type.IsEnum ? false : true, enumType.CreateInstanceGetDefaultValue()) :
+                    CsToDb.New(OdbcType.BigInt, "number", $"number(32){(type.IsEnum ? " NOT NULL" : "")}", false, type.IsEnum ? false : true, enumType.CreateInstanceGetDefaultValue());
                 if (_dicCsToDb.ContainsKey(type.FullName) == false)
                 {
                     lock (_dicCsToDbLock)
@@ -70,12 +71,12 @@ namespace FreeSql.Odbc.Dameng
                             _dicCsToDb.Add(type.FullName, newItem);
                     }
                 }
-                return ((int)newItem.Item1, newItem.Item2, newItem.Item3, newItem.Item5, newItem.Item6);
+                return new DbInfoResult((int)newItem.type, newItem.dbtype, newItem.dbtypeFull, newItem.isnullable, newItem.defaultValue);
             }
             return null;
         }
 
-        protected override string GetComparisonDDLStatements(params (Type entityType, string tableName)[] objects)
+        protected override string GetComparisonDDLStatements(params TypeAndName[] objects)
         {
             var userId = (_orm.Ado.MasterPool as OdbcDamengConnectionPool)?.UserId;
             if (string.IsNullOrEmpty(userId))
@@ -83,7 +84,7 @@ namespace FreeSql.Odbc.Dameng
                 {
                     userId = OdbcDamengConnectionPool.GetUserId(conn.Value.ConnectionString);
                 }
-            var seqcols = new List<(ColumnInfo, string[], bool)>(); //序列：列，表，自增
+            var seqcols = new List<NaviteTuple<ColumnInfo, string[], bool>>(); //序列：列，表，自增
             var seqnameDel = new List<string>(); //要删除的序列+触发器
 
             var sb = new StringBuilder();
@@ -114,7 +115,7 @@ namespace FreeSql.Odbc.Dameng
                 //codefirst 不支持表名中带 .
 
                 if (string.Compare(tbname[0], userId) != 0 && _orm.Ado.ExecuteScalar(CommandType.Text, _commonUtils.FormatSql(" select 1 from sys.dba_users where username={0}", tbname[0])) == null) //创建数据库
-                    throw new NotImplementedException($"Oracle CodeFirst 不支持代码创建 tablespace 与 schemas {tbname[0]}");
+                    throw new NotImplementedException($"达梦 CodeFirst 不支持代码创建 tablespace 与 schemas {tbname[0]}");
 
                 var sbalter = new StringBuilder();
                 var istmpatler = false; //创建临时表，导入数据，删除旧表，修改
@@ -134,12 +135,12 @@ namespace FreeSql.Odbc.Dameng
                         foreach (var tbcol in tb.ColumnsByPosition)
                         {
                             sb.Append(" \r\n  ").Append(_commonUtils.QuoteSqlName(tbcol.Attribute.Name)).Append(" ").Append(tbcol.Attribute.DbType).Append(",");
-                            if (tbcol.Attribute.IsIdentity == true) seqcols.Add((tbcol, tbname, true));
+                            if (tbcol.Attribute.IsIdentity == true) seqcols.Add(NaviteTuple.Create(tbcol, tbname, true));
                         }
                         if (tb.Primarys.Any())
                         {
                             var pkname = primaryKeyName ?? $"{tbname[0]}_{tbname[1]}_pk1";
-                            sb.Append(" \r\n  CONSTRAINT ").Append(pkname).Append(" PRIMARY KEY (");
+                            sb.Append(" \r\n  CONSTRAINT ").Append(_commonUtils.QuoteSqlName(pkname)).Append(" PRIMARY KEY (");
                             foreach (var tbcol in tb.Primarys) sb.Append(_commonUtils.QuoteSqlName(tbcol.Attribute.Name)).Append(", ");
                             sb.Remove(sb.Length - 2, 2).Append("),");
                         }
@@ -150,7 +151,7 @@ namespace FreeSql.Odbc.Dameng
                         {
                             sb.Append("execute immediate 'CREATE ");
                             if (uk.IsUnique) sb.Append("UNIQUE ");
-                            sb.Append("INDEX ").Append(_commonUtils.QuoteSqlName(uk.Name)).Append(" ON ").Append(createTableName).Append("(");
+                            sb.Append("INDEX ").Append(_commonUtils.QuoteSqlName(ReplaceIndexName(uk.Name, tbname[1]))).Append(" ON ").Append(createTableName).Append("(");
                             foreach (var tbcol in uk.Columns)
                             {
                                 sb.Append(_commonUtils.QuoteSqlName(tbcol.Column.Attribute.Name));
@@ -165,6 +166,8 @@ namespace FreeSql.Odbc.Dameng
                             if (string.IsNullOrEmpty(tbcol.Comment) == false)
                                 sb.Append("execute immediate 'COMMENT ON COLUMN ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}.{tbcol.Attribute.Name}")).Append(" IS ").Append(_commonUtils.FormatSql("{0}", tbcol.Comment).Replace("'", "''")).Append("';\r\n");
                         }
+                        if (string.IsNullOrEmpty(tb.Comment) == false)
+                            sb.Append("execute immediate 'COMMENT ON TABLE ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}")).Append(" IS ").Append(_commonUtils.FormatSql("{0}", tb.Comment).Replace("'", "''")).Append("';\r\n");
                         continue;
                     }
                     //如果新表，旧表在一个模式下，直接修改表名
@@ -189,8 +192,8 @@ a.data_precision,
 a.data_scale,
 a.char_used,
 case when a.nullable = 'N' then 0 else 1 end,
-nvl((select 1 from user_sequences where sequence_name='{Utils.GetCsName((tboldname ?? tbname).Last())}_seq_'||a.column_name), 0),
-nvl((select 1 from user_triggers where trigger_name='{Utils.GetCsName((tboldname ?? tbname).Last())}_seq_'||a.column_name||'TI'), 0),
+nvl((select 1 from user_sequences where upper(sequence_name)=upper('{Utils.GetCsName((tboldname ?? tbname).Last())}_seq_'||a.column_name) and rownum < 2), 0),
+nvl((select 1 from user_triggers where upper(trigger_name)=upper('{Utils.GetCsName((tboldname ?? tbname).Last())}_seq_'||a.column_name||'TI') and rownum < 2), 0),
 b.comments
 from all_tab_columns a
 left join all_col_comments b on b.owner = a.owner and b.table_name = a.table_name and b.column_name = a.column_name
@@ -198,7 +201,7 @@ where a.owner={{0}} and a.table_name={{1}}", tboldname ?? tbname);
                 var ds = _orm.Ado.ExecuteArray(CommandType.Text, sql);
                 var tbstruct = ds.ToDictionary(a => string.Concat(a[0]), a =>
                 {
-                    var sqlType = GetOracleSqlTypeFullName(a);
+                    var sqlType = GetDamengSqlTypeFullName(a);
                     return new
                     {
                         column = string.Concat(a[0]),
@@ -219,7 +222,16 @@ where a.owner={{0}} and a.table_name={{1}}", tboldname ?? tbname);
                         {
                             var isCommentChanged = tbstructcol.comment != (tbcol.Comment ?? "");
                             if (tbcol.Attribute.DbType.StartsWith(tbstructcol.sqlType, StringComparison.CurrentCultureIgnoreCase) == false)
+                            {
                                 istmpatler = true;
+                                if (istmpatler && tbcol.Attribute.DbType.StartsWith("varchar", StringComparison.CurrentCultureIgnoreCase) && tbstructcol.sqlType.StartsWith("varchar2", StringComparison.CurrentCultureIgnoreCase)
+                                    && Regex.Match(tbcol.Attribute.DbType, @"\(\d+").Groups[0].Value == Regex.Match(tbstructcol.sqlType, @"\(\d+").Groups[0].Value)
+                                    istmpatler = false;
+                                if (istmpatler && Regex.IsMatch(tbcol.Attribute.DbType, @"\(\d+") == false && Regex.IsMatch(tbstructcol.sqlType, @"\(\d+")
+                                    && string.Compare(tbcol.Attribute.DbType, Regex.Replace(tbstructcol.sqlType, @"\([^\)]+\)", ""), StringComparison.CurrentCultureIgnoreCase) == 0)
+                                    istmpatler = false;
+                                if (istmpatler) break;
+                            }
                             //sbalter.Append("execute immediate 'ALTER TABLE ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}")).Append(" MODIFY (").Append(_commonUtils.QuoteSqlName(tbstructcol.column)).Append(" ").Append(dbtypeNoneNotNull).Append(")';\r\n");
                             if (tbcol.Attribute.IsNullable != tbstructcol.is_nullable)
                             {
@@ -234,10 +246,10 @@ where a.owner={{0}} and a.table_name={{1}}", tboldname ?? tbname);
                                 //修改列名
                                 sbalter.Append("execute immediate 'ALTER TABLE ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}")).Append(" RENAME COLUMN ").Append(_commonUtils.QuoteSqlName(tbstructcol.column)).Append(" TO ").Append(_commonUtils.QuoteSqlName(tbcol.Attribute.Name)).Append("';\r\n");
                                 if (tbcol.Attribute.IsIdentity)
-                                    seqcols.Add((tbcol, tbname, tbcol.Attribute.IsIdentity == true));
+                                    seqcols.Add(NaviteTuple.Create(tbcol, tbname, tbcol.Attribute.IsIdentity == true));
                             }
                             else if (tbcol.Attribute.IsIdentity != tbstructcol.is_identity)
-                                seqcols.Add((tbcol, tbname, tbcol.Attribute.IsIdentity == true));
+                                seqcols.Add(NaviteTuple.Create(tbcol, tbname, tbcol.Attribute.IsIdentity == true));
                             if (isCommentChanged)
                                 sbalter.Append("execute immediate 'COMMENT ON COLUMN ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}.{tbcol.Attribute.Name}")).Append(" IS ").Append(_commonUtils.FormatSql("{0}", tbcol.Comment ?? "").Replace("'", "''")).Append("';\r\n");
                             continue;
@@ -249,10 +261,12 @@ where a.owner={{0}} and a.table_name={{1}}", tboldname ?? tbname);
                             sbalter.Append("execute immediate 'UPDATE ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}")).Append(" SET ").Append(_commonUtils.QuoteSqlName(tbcol.Attribute.Name)).Append(" = ").Append(tbcol.DbDefaultValue.Replace("'", "''")).Append("';\r\n");
                             sbalter.Append("execute immediate 'ALTER TABLE ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}")).Append(" MODIFY ").Append(_commonUtils.QuoteSqlName(tbcol.Attribute.Name)).Append(" NOT NULL';\r\n");
                         }
-                        if (tbcol.Attribute.IsIdentity == true) seqcols.Add((tbcol, tbname, tbcol.Attribute.IsIdentity == true));
+                        if (tbcol.Attribute.IsIdentity == true) seqcols.Add(NaviteTuple.Create(tbcol, tbname, tbcol.Attribute.IsIdentity == true));
                         if (string.IsNullOrEmpty(tbcol.Comment) == false) sbalter.Append("execute immediate 'COMMENT ON COLUMN ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}.{tbcol.Attribute.Name}")).Append(" IS ").Append(_commonUtils.FormatSql("{0}", tbcol.Comment ?? "").Replace("'", "''")).Append("';\r\n");
                     }
-
+                }
+                if (istmpatler == false)
+                {
                     var dsuksql = _commonUtils.FormatSql(@"
 select
 c.column_name,
@@ -270,13 +284,14 @@ and not exists(select 1 from all_constraints where index_name = a.index_name and
                     foreach (var uk in tb.Indexes)
                     {
                         if (string.IsNullOrEmpty(uk.Name) || uk.Columns.Any() == false) continue;
-                        var dsukfind1 = dsuk.Where(a => string.Compare(a[1], uk.Name, true) == 0).ToArray();
+                        var ukname = ReplaceIndexName(uk.Name, tbname[1]);
+                        var dsukfind1 = dsuk.Where(a => string.Compare(a[1], ukname, true) == 0).ToArray();
                         if (dsukfind1.Any() == false || dsukfind1.Length != uk.Columns.Length || dsukfind1.Where(a => uk.Columns.Where(b => (a[3] == "1") == uk.IsUnique && string.Compare(b.Column.Attribute.Name, a[0], true) == 0 && (a[2] == "1") == b.IsDesc).Any()).Count() != uk.Columns.Length)
                         {
-                            if (dsukfind1.Any()) sbalter.Append("execute immediate 'DROP INDEX ").Append(_commonUtils.QuoteSqlName(uk.Name)).Append("';\r\n");
+                            if (dsukfind1.Any()) sbalter.Append("execute immediate 'DROP INDEX ").Append(_commonUtils.QuoteSqlName(ukname)).Append("';\r\n");
                             sbalter.Append("execute immediate 'CREATE ");
                             if (uk.IsUnique) sbalter.Append("UNIQUE ");
-                            sbalter.Append("INDEX ").Append(_commonUtils.QuoteSqlName(uk.Name)).Append(" ON ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}")).Append("(");
+                            sbalter.Append("INDEX ").Append(_commonUtils.QuoteSqlName(ukname)).Append(" ON ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}")).Append("(");
                             foreach (var tbcol in uk.Columns)
                             {
                                 sbalter.Append(_commonUtils.QuoteSqlName(tbcol.Column.Attribute.Name));
@@ -289,12 +304,17 @@ and not exists(select 1 from all_constraints where index_name = a.index_name and
                 }
                 if (istmpatler == false)
                 {
+                    var dbcomment = string.Concat(_orm.Ado.ExecuteScalar(CommandType.Text, _commonUtils.FormatSql(@" select comments from all_tab_comments where owner = {0} and table_name = {1} and table_type = 'TABLE'", tbname[0], tbname[1])));
+                    if (dbcomment != (tb.Comment ?? ""))
+                        sb.Append("execute immediate 'COMMENT ON TABLE ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}")).Append(" IS ").Append(_commonUtils.FormatSql("{0}", tb.Comment).Replace("'", "''")).Append("';\r\n");
+
                     sb.Append(sbalter);
                     continue;
                 }
                 var oldpk = _orm.Ado.ExecuteScalar(CommandType.Text, _commonUtils.FormatSql(@" select constraint_name from user_constraints where owner={0} and table_name={1} and constraint_type='P'", tbname))?.ToString();
-                if (string.IsNullOrEmpty(oldpk) == false)
-                    sb.Append("execute immediate 'ALTER TABLE ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}")).Append(" DROP CONSTRAINT ").Append(oldpk).Append("';\r\n");
+                //if (string.IsNullOrEmpty(oldpk) == false)
+                //    sb.Append("execute immediate 'ALTER TABLE ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}")).Append(" DROP CONSTRAINT ").Append(_commonUtils.QuoteSqlName(oldpk)).Append("';\r\n");
+                //执行失败(语句1) 试图删除聚集主键
 
                 //创建临时表，数据导进临时表，然后删除原表，将临时表改名为原表名
                 var tablename = tboldname == null ? _commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}") : _commonUtils.QuoteSqlName($"{tboldname[0]}.{tboldname[1]}");
@@ -304,12 +324,13 @@ and not exists(select 1 from all_constraints where index_name = a.index_name and
                 foreach (var tbcol in tb.ColumnsByPosition)
                 {
                     sb.Append(" \r\n  ").Append(_commonUtils.QuoteSqlName(tbcol.Attribute.Name)).Append(" ").Append(tbcol.Attribute.DbType).Append(",");
-                    if (tbcol.Attribute.IsIdentity == true) seqcols.Add((tbcol, tbname, true));
+                    if (tbcol.Attribute.IsIdentity == true) seqcols.Add(NaviteTuple.Create(tbcol, tbname, true));
                 }
                 if (tb.Primarys.Any())
                 {
-                    var pkname = primaryKeyName ?? $"{tbname[0]}_{tbname[1]}_pk2";
-                    sb.Append(" \r\n  CONSTRAINT ").Append(pkname).Append(" PRIMARY KEY (");
+                    var pkname = primaryKeyName ?? $"{tbname[0]}_{tbname[1]}_pk1";
+                    if (string.IsNullOrEmpty(oldpk) == false && oldpk == pkname) pkname = $"{pkname}1";
+                    sb.Append(" \r\n  CONSTRAINT ").Append(_commonUtils.QuoteSqlName(pkname)).Append(" PRIMARY KEY (");
                     foreach (var tbcol in tb.Primarys) sb.Append(_commonUtils.QuoteSqlName(tbcol.Attribute.Name)).Append(", ");
                     sb.Remove(sb.Length - 2, 2).Append("),");
                 }
@@ -321,6 +342,9 @@ and not exists(select 1 from all_constraints where index_name = a.index_name and
                     if (string.IsNullOrEmpty(tbcol.Comment) == false)
                         sb.Append("execute immediate 'COMMENT ON COLUMN ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.FTmp_{tbname[1]}.{tbcol.Attribute.Name}")).Append(" IS ").Append(_commonUtils.FormatSql("{0}", tbcol.Comment).Replace("'", "''")).Append("';\r\n");
                 }
+                if (string.IsNullOrEmpty(tb.Comment) == false)
+                    sb.Append("execute immediate 'COMMENT ON TABLE ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.FTmp_{tbname[1]}")).Append(" IS ").Append(_commonUtils.FormatSql("{0}", tb.Comment).Replace("'", "''")).Append("';\r\n");
+
                 sb.Append("execute immediate 'INSERT INTO ").Append(tmptablename).Append(" (");
                 foreach (var tbcol in tb.ColumnsByPosition)
                     sb.Append(_commonUtils.QuoteSqlName(tbcol.Attribute.Name)).Append(", ");
@@ -352,7 +376,7 @@ and not exists(select 1 from all_constraints where index_name = a.index_name and
                 {
                     sb.Append("execute immediate 'CREATE ");
                     if (uk.IsUnique) sb.Append("UNIQUE ");
-                    sb.Append("INDEX ").Append(_commonUtils.QuoteSqlName(uk.Name)).Append(" ON ").Append(tablename).Append("(");
+                    sb.Append("INDEX ").Append(_commonUtils.QuoteSqlName(ReplaceIndexName(uk.Name, tbname[1]))).Append(" ON ").Append(tablename).Append("(");
                     foreach (var tbcol in uk.Columns)
                     {
                         sb.Append(_commonUtils.QuoteSqlName(tbcol.Column.Attribute.Name));
@@ -367,12 +391,12 @@ and not exists(select 1 from all_constraints where index_name = a.index_name and
             {
                 if (dicDeclare.ContainsKey(seqname) == false)
                 {
-                    sbDeclare.Append("\r\n").Append(seqname).Append("IS NUMBER; \r\n");
+                    sbDeclare.Append("\r\nIS").Append(seqname).Append(" NUMBER; \r\n");
                     dicDeclare.Add(seqname, true);
                 }
-                sb.Append(seqname).Append("IS := 0; \r\n")
-                    .Append(" select count(1) into ").Append(seqname).Append(_commonUtils.FormatSql("IS from user_sequences where sequence_name={0}; \r\n", seqname))
-                    .Append("if ").Append(seqname).Append("IS > 0 then \r\n")
+                sb.Append("IS").Append(seqname).Append(" := 0; \r\n")
+                    .Append(" select count(1) into IS").Append(seqname).Append(_commonUtils.FormatSql(" from user_sequences where sequence_name={0}; \r\n", seqname))
+                    .Append("if IS").Append(seqname).Append(" > 0 then \r\n")
                     .Append("  execute immediate 'DROP SEQUENCE ").Append(_commonUtils.QuoteSqlName(seqname)).Append("';\r\n")
                     .Append("end if; \r\n");
             };
@@ -380,12 +404,12 @@ and not exists(select 1 from all_constraints where index_name = a.index_name and
             {
                 if (dicDeclare.ContainsKey(tiggerName) == false)
                 {
-                    sbDeclare.Append("\r\n").Append(tiggerName).Append("IS NUMBER; \r\n");
+                    sbDeclare.Append("\r\nIS").Append(tiggerName).Append(" NUMBER; \r\n");
                     dicDeclare.Add(tiggerName, true);
                 }
-                sb.Append(tiggerName).Append("IS := 0; \r\n")
-                    .Append(" select count(1) into ").Append(tiggerName).Append(_commonUtils.FormatSql("IS from user_triggers where trigger_name={0}; \r\n", tiggerName))
-                    .Append("if ").Append(tiggerName).Append("IS > 0 then \r\n")
+                sb.Append("IS").Append(tiggerName).Append(" := 0; \r\n")
+                    .Append(" select count(1) into IS").Append(tiggerName).Append(_commonUtils.FormatSql(" from user_triggers where trigger_name={0}; \r\n", tiggerName))
+                    .Append("if IS").Append(tiggerName).Append(" > 0 then \r\n")
                     .Append("  execute immediate 'DROP TRIGGER ").Append(_commonUtils.QuoteSqlName(tiggerName)).Append("';\r\n")
                     .Append("end if; \r\n");
             };
@@ -397,7 +421,7 @@ and not exists(select 1 from all_constraints where index_name = a.index_name and
             foreach (var seqcol in seqcols)
             {
                 var tbname = seqcol.Item2;
-                var seqname = Utils.GetCsName($"{tbname[1]}_seq_{seqcol.Item1.Attribute.Name}");
+                var seqname = Utils.GetCsName($"{tbname[1]}_seq_{seqcol.Item1.Attribute.Name}").ToUpper();
                 var tiggerName = seqname + "TI";
                 var tbname2 = _commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}");
                 var colname2 = _commonUtils.QuoteSqlName(seqcol.Item1.Attribute.Name);
@@ -419,7 +443,7 @@ and not exists(select 1 from all_constraints where index_name = a.index_name and
             return sb.Length == 0 ? null : sb.Insert(0, "BEGIN \r\n").Insert(0, sbDeclare.ToString()).Append("END;").ToString();
         }
 
-        internal static string GetOracleSqlTypeFullName(object[] row)
+        internal static string GetDamengSqlTypeFullName(object[] row)
         {
             var a = row;
             var sqlType = string.Concat(a[1]).ToUpper();

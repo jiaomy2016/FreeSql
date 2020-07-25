@@ -2,6 +2,7 @@ using FreeSql.DataAnnotations;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using Xunit;
@@ -10,6 +11,53 @@ namespace FreeSql.Tests.Sqlite
 {
     public class SqliteCodeFirstTest
     {
+        [Fact]
+        public void Blob()
+        {
+            var str1 = string.Join(",", Enumerable.Range(0, 10000).Select(a => "我是中国人"));
+            var data1 = Encoding.UTF8.GetBytes(str1);
+
+            var item1 = new TS_BLB01 { Data = data1 };
+            Assert.Equal(1, g.sqlite.Insert(item1).ExecuteAffrows());
+
+            var item2 = g.sqlite.Select<TS_BLB01>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(item1.Data.Length, item2.Data.Length);
+
+            var str2 = Encoding.UTF8.GetString(item2.Data);
+            Assert.Equal(str1, str2);
+
+            //NoneParameter
+            item1 = new TS_BLB01 { Data = data1 };
+            Assert.Equal(1, g.sqlite.Insert<TS_BLB01>().NoneParameter().AppendData(item1).ExecuteAffrows());
+
+            item2 = g.sqlite.Select<TS_BLB01>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(item1.Data.Length, item2.Data.Length);
+
+            str2 = Encoding.UTF8.GetString(item2.Data);
+            Assert.Equal(str1, str2);
+        }
+        class TS_BLB01
+        {
+            public Guid Id { get; set; }
+            [MaxLength(-1)]
+            public byte[] Data { get; set; }
+        }
+
+        [Fact]
+        public void StringLength()
+        {
+            var dll = g.sqlite.CodeFirst.GetComparisonDDLStatements<TS_SLTB>();
+            g.sqlite.CodeFirst.SyncStructure<TS_SLTB>();
+        }
+        class TS_SLTB
+        {
+            public Guid Id { get; set; }
+            [Column(StringLength = 50)]
+            public string Title { get; set; }
+
+            [Column(IsNullable = false, StringLength = 50)]
+            public string TitleSub { get; set; }
+        }
 
         [Fact]
         public void 表名中有点()
@@ -56,6 +104,28 @@ namespace FreeSql.Tests.Sqlite
             Assert.NotNull(item2);
             Assert.Equal(item.编号, item2.编号);
             Assert.Equal(item.标题, item2.标题);
+
+            item.标题 = "测试标题更新";
+            Assert.Equal(1, g.sqlite.Update<测试中文表>().SetSource(item).ExecuteAffrows());
+            item2 = g.sqlite.Select<测试中文表>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
+
+            item.标题 = "测试标题更新_repo";
+            var repo = g.sqlite.GetRepository<测试中文表>();
+            Assert.Equal(1, repo.Update(item));
+            item2 = g.sqlite.Select<测试中文表>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
+
+            item.标题 = "测试标题更新_repo22";
+            Assert.Equal(1, repo.Update(item));
+            item2 = g.sqlite.Select<测试中文表>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
         }
         class 测试中文表
         {
@@ -76,11 +146,12 @@ namespace FreeSql.Tests.Sqlite
         {
             var sql = g.sqlite.CodeFirst.GetComparisonDDLStatements<AddUniquesInfo>();
             g.sqlite.CodeFirst.SyncStructure<AddUniquesInfo>();
+            g.sqlite.CodeFirst.SyncStructure(typeof(AddUniquesInfo), "AddUniquesInfo1");
         }
         [Table(Name = "AddUniquesInfo2", OldName = "AddUniquesInfo")]
-        [Index("uk_phone", "phone", true)]
-        [Index("uk_group_index", "group,index", true)]
-        [Index("uk_group_index22", "group desc, index22", true)]
+        [Index("{tablename}_uk_phone", "phone", true)]
+        [Index("{tablename}_uk_group_index", "group,index", true)]
+        [Index("{tablename}_uk_group_index22", "group desc, index22", true)]
         class AddUniquesInfo
         {
             public Guid id { get; set; }
@@ -168,53 +239,7 @@ namespace FreeSql.Tests.Sqlite
         {
 
             var sql = g.sqlite.CodeFirst.GetComparisonDDLStatements<TableAllType>();
-            if (string.IsNullOrEmpty(sql) == false)
-            {
-                Assert.Equal(@"CREATE TABLE IF NOT EXISTS ""main"".""tb_alltype"" ( 
-  ""Id"" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, 
-  ""Bool"" BOOLEAN NOT NULL, 
-  ""SByte"" SMALLINT NOT NULL, 
-  ""Short"" SMALLINT NOT NULL, 
-  ""Int"" INTEGER NOT NULL, 
-  ""Long"" INTEGER NOT NULL, 
-  ""Byte"" INT2 NOT NULL, 
-  ""UShort"" UNSIGNED NOT NULL, 
-  ""UInt"" DECIMAL(10,0) NOT NULL, 
-  ""ULong"" DECIMAL(21,0) NOT NULL, 
-  ""Double"" DOUBLE NOT NULL, 
-  ""Float"" FLOAT NOT NULL, 
-  ""Decimal"" DECIMAL(10,2) NOT NULL, 
-  ""TimeSpan"" BIGINT NOT NULL, 
-  ""DateTime"" DATETIME NOT NULL, 
-  ""DateTimeOffSet"" DATETIME NOT NULL, 
-  ""Bytes"" BLOB, 
-  ""String"" NVARCHAR(255), 
-  ""Guid"" CHARACTER(36) NOT NULL, 
-  ""BoolNullable"" BOOLEAN, 
-  ""SByteNullable"" SMALLINT, 
-  ""ShortNullable"" SMALLINT, 
-  ""IntNullable"" INTEGER, 
-  ""testFielLongNullable"" INTEGER, 
-  ""ByteNullable"" INT2, 
-  ""UShortNullable"" UNSIGNED, 
-  ""UIntNullable"" DECIMAL(10,0), 
-  ""ULongNullable"" DECIMAL(21,0), 
-  ""DoubleNullable"" DOUBLE, 
-  ""FloatNullable"" FLOAT, 
-  ""DecimalNullable"" DECIMAL(10,2), 
-  ""TimeSpanNullable"" BIGINT, 
-  ""DateTimeNullable"" DATETIME, 
-  ""DateTimeOffSetNullable"" DATETIME, 
-  ""GuidNullable"" CHARACTER(36), 
-  ""Enum1"" MEDIUMINT NOT NULL, 
-  ""Enum1Nullable"" MEDIUMINT, 
-  ""Enum2"" BIGINT NOT NULL, 
-  ""Enum2Nullable"" BIGINT
-) 
-;
-", sql);
-            }
-
+            Assert.True(string.IsNullOrEmpty(sql)); //测试运行两次后
             //sql = g.Sqlite.CodeFirst.GetComparisonDDLStatements<Tb_alltype>();
         }
 
@@ -256,7 +281,8 @@ namespace FreeSql.Tests.Sqlite
                 SByteNullable = 99,
                 Short = short.MaxValue,
                 ShortNullable = short.MinValue,
-                String = "我是中国人string",
+                String = "我是中国人string'\\?!@#$%^&*()_+{}}{~?><<>",
+                Char = 'X',
                 TimeSpan = TimeSpan.FromSeconds(999),
                 TimeSpanNullable = TimeSpan.FromSeconds(60),
                 UInt = uint.MaxValue,
@@ -269,8 +295,16 @@ namespace FreeSql.Tests.Sqlite
             };
             item2.Id = (int)insert.AppendData(item2).ExecuteIdentity();
             var newitem2 = select.Where(a => a.Id == item2.Id).ToOne();
+            Assert.Equal(item2.String, newitem2.String);
+            Assert.Equal(item2.Char, newitem2.Char);
+
+            item2.Id = (int)insert.NoneParameter().AppendData(item2).ExecuteIdentity();
+            newitem2 = select.Where(a => a.Id == item2.Id).ToOne();
+            Assert.Equal(item2.String, newitem2.String);
+            Assert.Equal(item2.Char, newitem2.Char);
 
             var items = select.ToList();
+            var itemstb = select.ToDataTable();
         }
 
         [Table(Name = "tb_alltype")]
@@ -302,6 +336,7 @@ namespace FreeSql.Tests.Sqlite
 
             public byte[] Bytes { get; set; }
             public string String { get; set; }
+            public char Char { get; set; }
             public Guid Guid { get; set; }
 
             public bool? BoolNullable { get; set; }
@@ -329,6 +364,11 @@ namespace FreeSql.Tests.Sqlite
             public TableAllTypeEnumType1? Enum1Nullable { get; set; }
             public TableAllTypeEnumType2 Enum2 { get; set; }
             public TableAllTypeEnumType2? Enum2Nullable { get; set; }
+
+            public TableAllTypeEnumType3 testFieldEnum3 { get; set; }
+            public TableAllTypeEnumType3? testFieldEnum3Nullable { get; set; }
+
+            public enum TableAllTypeEnumType3 { }
         }
 
         public enum TableAllTypeEnumType1 { e1, e2, e3, e5 }

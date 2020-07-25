@@ -43,7 +43,7 @@ namespace FreeSql.MsAccess.Curd
             var pkidx = 0;
             foreach (var pk in _table.Primarys)
             {
-                if (pkidx > 0) caseWhen.Append(", ");
+                if (pkidx > 0) caseWhen.Append(" + '+' + ");
                 caseWhen.Append(MsAccessUtils.GetCastSql(_commonUtils.QuoteReadColumn(pk.CsType, pk.Attribute.MapType, _commonUtils.QuoteSqlName(pk.Attribute.Name)), typeof(string)));
                 ++pkidx;
             }
@@ -60,7 +60,7 @@ namespace FreeSql.MsAccess.Curd
             var pkidx = 0;
             foreach (var pk in _table.Primarys)
             {
-                if (pkidx > 0) sb.Append(", ");
+                if (pkidx > 0) sb.Append(" + '+' + ");
                 sb.Append(MsAccessUtils.GetCastSql(_commonUtils.FormatSql("{0}", pk.GetMapValue(d)), typeof(string)));
                 ++pkidx;
             }
@@ -68,8 +68,8 @@ namespace FreeSql.MsAccess.Curd
 
 #if net40
 #else
-        public override Task<int> ExecuteAffrowsAsync() => base.SplitExecuteAffrowsAsync(500, 2100);
-        public override Task<List<T1>> ExecuteUpdatedAsync() => base.SplitExecuteUpdatedAsync(500, 2100);
+        public override Task<int> ExecuteAffrowsAsync() => base.SplitExecuteAffrowsAsync(1, 1000);
+        public override Task<List<T1>> ExecuteUpdatedAsync() => base.SplitExecuteUpdatedAsync(1, 1000);
 
         protected override Task<List<T1>> RawExecuteUpdatedAsync()
         {

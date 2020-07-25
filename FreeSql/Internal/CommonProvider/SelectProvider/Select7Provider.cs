@@ -37,11 +37,11 @@ namespace FreeSql.Internal.CommonProvider
             return this.InternalAvg(column?.Body);
         }
 
-        ISelectGrouping<TKey, (T1, T2, T3, T4, T5, T6, T7)> ISelect<T1, T2, T3, T4, T5, T6, T7>.GroupBy<TKey>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, TKey>> exp)
+        ISelectGrouping<TKey, NaviteTuple<T1, T2, T3, T4, T5, T6, T7>> ISelect<T1, T2, T3, T4, T5, T6, T7>.GroupBy<TKey>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, TKey>> exp)
         {
-            if (exp == null) return this.InternalGroupBy<TKey, (T1, T2, T3, T4, T5, T6, T7)>(exp?.Body);
+            if (exp == null) return this.InternalGroupBy<TKey, NaviteTuple<T1, T2, T3, T4, T5, T6, T7>>(exp?.Body);
             for (var a = 0; a < exp.Parameters.Count; a++) _tables[a].Parameter = exp.Parameters[a];
-            return this.InternalGroupBy<TKey, (T1, T2, T3, T4, T5, T6, T7)>(exp?.Body);
+            return this.InternalGroupBy<TKey, NaviteTuple<T1, T2, T3, T4, T5, T6, T7>>(exp?.Body);
         }
 
         TMember ISelect<T1, T2, T3, T4, T5, T6, T7>.Max<TMember>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, TMember>> column)
@@ -163,9 +163,9 @@ namespace FreeSql.Internal.CommonProvider
             return this.Where(_commonExpression.ExpressionWhereLambda(_tables, exp?.Body, null, _whereCascadeExpression, _params)).Any();
         }
 
-        TReturn ISelect<T1, T2, T3, T4, T5, T6, T7>.ToOne<TReturn>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, TReturn>> select) => (this as ISelect<T1, T2, T3, T4, T5, T6, T7>).ToList(select).FirstOrDefault();
-        TReturn ISelect<T1, T2, T3, T4, T5, T6, T7>.First<TReturn>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, TReturn>> select) => (this as ISelect<T1, T2, T3, T4, T5, T6, T7>).ToList(select).FirstOrDefault();
-        TDto ISelect<T1, T2, T3, T4, T5, T6, T7>.First<TDto>() => (this as ISelect<T1, T2, T3, T4, T5, T6, T7>).ToList<TDto>().FirstOrDefault();
+        TReturn ISelect<T1, T2, T3, T4, T5, T6, T7>.ToOne<TReturn>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, TReturn>> select) => (this as ISelect<T1, T2, T3, T4, T5, T6, T7>).Limit(1).ToList(select).FirstOrDefault();
+        TReturn ISelect<T1, T2, T3, T4, T5, T6, T7>.First<TReturn>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, TReturn>> select) => (this as ISelect<T1, T2, T3, T4, T5, T6, T7>).Limit(1).ToList(select).FirstOrDefault();
+        TDto ISelect<T1, T2, T3, T4, T5, T6, T7>.First<TDto>() => (this as ISelect<T1, T2, T3, T4, T5, T6, T7>).Limit(1).ToList<TDto>().FirstOrDefault();
 
 #if net40
 #else
@@ -226,9 +226,9 @@ namespace FreeSql.Internal.CommonProvider
             return this.Where(_commonExpression.ExpressionWhereLambda(_tables, exp?.Body, null, _whereCascadeExpression, _params)).AnyAsync();
         }
 
-        async Task<TReturn> ISelect<T1, T2, T3, T4, T5, T6, T7>.ToOneAsync<TReturn>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, TReturn>> select) => (await (this as ISelect<T1, T2, T3, T4, T5, T6, T7>).ToListAsync(select)).FirstOrDefault();
-        async Task<TReturn> ISelect<T1, T2, T3, T4, T5, T6, T7>.FirstAsync<TReturn>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, TReturn>> select) => (await (this as ISelect<T1, T2, T3, T4, T5, T6, T7>).ToListAsync(select)).FirstOrDefault();
-        async Task<TDto> ISelect<T1, T2, T3, T4, T5, T6, T7>.FirstAsync<TDto>() => (await (this as ISelect<T1, T2, T3, T4, T5, T6, T7>).ToListAsync<TDto>()).FirstOrDefault();
+        async Task<TReturn> ISelect<T1, T2, T3, T4, T5, T6, T7>.ToOneAsync<TReturn>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, TReturn>> select) => (await (this as ISelect<T1, T2, T3, T4, T5, T6, T7>).Limit(1).ToListAsync(select)).FirstOrDefault();
+        async Task<TReturn> ISelect<T1, T2, T3, T4, T5, T6, T7>.FirstAsync<TReturn>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, TReturn>> select) => (await (this as ISelect<T1, T2, T3, T4, T5, T6, T7>).Limit(1).ToListAsync(select)).FirstOrDefault();
+        async Task<TDto> ISelect<T1, T2, T3, T4, T5, T6, T7>.FirstAsync<TDto>() => (await (this as ISelect<T1, T2, T3, T4, T5, T6, T7>).Limit(1).ToListAsync<TDto>()).FirstOrDefault();
 
 #endif
     }

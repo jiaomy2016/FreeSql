@@ -2,9 +2,9 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net45;net40</TargetFrameworks>
-    <Version>1.2.0-preview1</Version>
+    <Version>1.7.0-preview0722</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Authors>YeXiangQin</Authors>
+    <Authors>ncc;YeXiangQin</Authors>
     <Description>FreeSql 全家桶，懒人专用</Description>
     <PackageProjectUrl>https://github.com/2881099/FreeSql.DbContext</PackageProjectUrl>
     <PackageTags>FreeSql ORM DbContext</PackageTags>
@@ -15,6 +15,9 @@
     <Title>$(AssemblyName)</Title>
     <IsPackable>true</IsPackable>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>key.snk</AssemblyOriginatorKeyFile>
+    <DelaySign>false</DelaySign>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FreeSql.Repository\FreeSql.Repository.csproj" />
+    <ProjectReference Include="..\Providers\FreeSql.Provider.Dameng\FreeSql.Provider.Dameng.csproj" />
     <ProjectReference Include="..\Providers\FreeSql.Provider.MsAccess\FreeSql.Provider.MsAccess.csproj" />
     <ProjectReference Include="..\Providers\FreeSql.Provider.MySql\FreeSql.Provider.MySql.csproj" />
     <ProjectReference Include="..\Providers\FreeSql.Provider.Odbc\FreeSql.Provider.Odbc.csproj" />

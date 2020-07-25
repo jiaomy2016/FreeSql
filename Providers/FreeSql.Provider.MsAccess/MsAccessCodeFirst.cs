@@ -17,35 +17,36 @@ namespace FreeSql.MsAccess
         public MsAccessCodeFirst(IFreeSql orm, CommonUtils commonUtils, CommonExpression commonExpression) : base(orm, commonUtils, commonExpression) { }
 
         static object _dicCsToDbLock = new object();
-        static Dictionary<string, (OleDbType type, string dbtype, string dbtypeFull, bool? isUnsigned, bool? isnullable, object defaultValue)> _dicCsToDb = new Dictionary<string, (OleDbType type, string dbtype, string dbtypeFull, bool? isUnsigned, bool? isnullable, object defaultValue)>() {
-                { typeof(bool).FullName,  (OleDbType.Boolean, "bit","bit NOT NULL", null, false, false) },{ typeof(bool?).FullName,  (OleDbType.Boolean, "bit","bit", null, true, null) },
+        static Dictionary<string, CsToDb<OleDbType>> _dicCsToDb = new Dictionary<string, CsToDb<OleDbType>>() {
+                { typeof(bool).FullName,  CsToDb.New(OleDbType.Boolean, "bit","bit NOT NULL", null, false, false) },{ typeof(bool?).FullName,  CsToDb.New(OleDbType.Boolean, "bit","bit", null, true, null) },
 
-                { typeof(sbyte).FullName,  (OleDbType.TinyInt, "decimal", "decimal(3,0) NOT NULL", false, false, 0) },{ typeof(sbyte?).FullName,  (OleDbType.TinyInt, "decimal", "decimal(3,0)", false, true, null) },
-                { typeof(short).FullName,  (OleDbType.SmallInt, "decimal","decimal(6,0) NOT NULL", false, false, 0) },{ typeof(short?).FullName,  (OleDbType.SmallInt, "decimal", "decimal(6,0)", false, true, null) },
-                { typeof(int).FullName,  (OleDbType.Integer, "decimal", "decimal(11,0) NOT NULL", false, false, 0) },{ typeof(int?).FullName,  (OleDbType.Integer, "decimal", "decimal(11,0)", false, true, null) },
-                { typeof(long).FullName,  (OleDbType.BigInt, "decimal","decimal(20,0) NOT NULL", false, false, 0) },{ typeof(long?).FullName,  (OleDbType.BigInt, "decimal","decimal(20,0)", false, true, null) },
+                { typeof(sbyte).FullName,  CsToDb.New(OleDbType.TinyInt, "decimal", "decimal(3,0) NOT NULL", false, false, 0) },{ typeof(sbyte?).FullName, CsToDb.New(OleDbType.TinyInt, "decimal", "decimal(3,0)", false, true, null) },
+                { typeof(short).FullName,  CsToDb.New(OleDbType.SmallInt, "decimal","decimal(6,0) NOT NULL", false, false, 0) },{ typeof(short?).FullName, CsToDb.New(OleDbType.SmallInt, "decimal", "decimal(6,0)", false, true, null) },
+                { typeof(int).FullName,  CsToDb.New(OleDbType.Integer, "decimal", "decimal(11,0) NOT NULL", false, false, 0) },{ typeof(int?).FullName, CsToDb.New(OleDbType.Integer, "decimal", "decimal(11,0)", false, true, null) },
+                { typeof(long).FullName,  CsToDb.New(OleDbType.BigInt, "decimal","decimal(20,0) NOT NULL", false, false, 0) },{ typeof(long?).FullName, CsToDb.New(OleDbType.BigInt, "decimal","decimal(20,0)", false, true, null) },
                 // access int long 类型是留给自动增长用的，所以这里全映射为 decimal
-                { typeof(byte).FullName,  (OleDbType.UnsignedTinyInt, "decimal","decimal(3,0) NOT NULL", true, false, 0) },{ typeof(byte?).FullName,  (OleDbType.UnsignedTinyInt, "decimal","decimal(3,0)", true, true, null) },
-                { typeof(ushort).FullName,  (OleDbType.UnsignedSmallInt, "decimal","decimal(5,0) NOT NULL", true, false, 0) },{ typeof(ushort?).FullName,  (OleDbType.UnsignedSmallInt, "decimal", "decimal(5,0)", true, true, null) },
-                { typeof(uint).FullName,  (OleDbType.UnsignedInt, "decimal", "decimal(10,0) NOT NULL", true, false, 0) },{ typeof(uint?).FullName,  (OleDbType.UnsignedInt, "decimal", "decimal(10,0)", true, true, null) },
-                { typeof(ulong).FullName,  (OleDbType.UnsignedBigInt, "decimal", "decimal(20,0) NOT NULL", true, false, 0) },{ typeof(ulong?).FullName,  (OleDbType.UnsignedBigInt, "decimal", "decimal(20,0)", true, true, null) },
+                { typeof(byte).FullName,  CsToDb.New(OleDbType.UnsignedTinyInt, "decimal","decimal(3,0) NOT NULL", true, false, 0) },{ typeof(byte?).FullName, CsToDb.New(OleDbType.UnsignedTinyInt, "decimal","decimal(3,0)", true, true, null) },
+                { typeof(ushort).FullName,  CsToDb.New(OleDbType.UnsignedSmallInt, "decimal","decimal(5,0) NOT NULL", true, false, 0) },{ typeof(ushort?).FullName, CsToDb.New(OleDbType.UnsignedSmallInt, "decimal", "decimal(5,0)", true, true, null) },
+                { typeof(uint).FullName,  CsToDb.New(OleDbType.UnsignedInt, "decimal", "decimal(10,0) NOT NULL", true, false, 0) },{ typeof(uint?).FullName, CsToDb.New(OleDbType.UnsignedInt, "decimal", "decimal(10,0)", true, true, null) },
+                { typeof(ulong).FullName, CsToDb.New (OleDbType.UnsignedBigInt, "decimal", "decimal(20,0) NOT NULL", true, false, 0) },{ typeof(ulong?).FullName, CsToDb.New(OleDbType.UnsignedBigInt, "decimal", "decimal(20,0)", true, true, null) },
 
-                { typeof(double).FullName,  (OleDbType.Double, "double", "double NOT NULL", false, false, 0) },{ typeof(double?).FullName,  (OleDbType.Double, "double", "double", false, true, null) },
-                { typeof(float).FullName,  (OleDbType.Currency, "single","single NOT NULL", false, false, 0) },{ typeof(float?).FullName,  (OleDbType.Currency, "single","single", false, true, null) },
-                { typeof(decimal).FullName,  (OleDbType.Decimal, "decimal", "decimal(10,2) NOT NULL", false, false, 0) },{ typeof(decimal?).FullName,  (OleDbType.Decimal, "decimal", "decimal(10,2)", false, true, null) },
+                { typeof(double).FullName,  CsToDb.New(OleDbType.Double, "double", "double NOT NULL", false, false, 0) },{ typeof(double?).FullName, CsToDb.New(OleDbType.Double, "double", "double", false, true, null) },
+                { typeof(float).FullName, CsToDb.New(OleDbType.Currency, "single","single NOT NULL", false, false, 0) },{ typeof(float?).FullName, CsToDb.New(OleDbType.Currency, "single","single", false, true, null) },
+                { typeof(decimal).FullName, CsToDb.New(OleDbType.Decimal, "decimal", "decimal(10,2) NOT NULL", false, false, 0) },{ typeof(decimal?).FullName, CsToDb.New(OleDbType.Decimal, "decimal", "decimal(10,2)", false, true, null) },
 
-                { typeof(TimeSpan).FullName,  (OleDbType.DBTime, "datetime","datetime NOT NULL", false, false, 0) },{ typeof(TimeSpan?).FullName,  (OleDbType.DBTime, "datetime", "datetime",false, true, null) },
-                { typeof(DateTime).FullName,  (OleDbType.DBTimeStamp, "datetime", "datetime NOT NULL", false, false, new DateTime(1970,1,1)) },{ typeof(DateTime?).FullName,  (OleDbType.DBTimeStamp, "datetime", "datetime", false, true, null) },
+                { typeof(TimeSpan).FullName, CsToDb.New(OleDbType.DBTime, "datetime","datetime NOT NULL", false, false, 0) },{ typeof(TimeSpan?).FullName, CsToDb.New(OleDbType.DBTime, "datetime", "datetime",false, true, null) },
+                { typeof(DateTime).FullName, CsToDb.New(OleDbType.DBTimeStamp, "datetime", "datetime NOT NULL", false, false, new DateTime(1970,1,1)) },{ typeof(DateTime?).FullName, CsToDb.New(OleDbType.DBTimeStamp, "datetime", "datetime", false, true, null) },
 
-                { typeof(byte[]).FullName,  (OleDbType.VarBinary, "varbinary", "varbinary(255)", false, null, new byte[0]) },
-                { typeof(string).FullName,  (OleDbType.VarChar, "varchar", "varchar(255)", false, null, "") },
+                { typeof(byte[]).FullName, CsToDb.New(OleDbType.VarBinary, "varbinary", "varbinary(255)", false, null, new byte[0]) },
+                { typeof(string).FullName, CsToDb.New(OleDbType.VarChar, "varchar", "varchar(255)", false, null, "") },
+                { typeof(char).FullName, CsToDb.New(OleDbType.VarChar, "varchar", "varchar(1)", false, null, '\0') },
 
-                { typeof(Guid).FullName,  (OleDbType.Guid, "varchar", "varchar(36) NOT NULL", false, false, Guid.Empty) },{ typeof(Guid?).FullName,  (OleDbType.Guid, "varchar", "varchar(36)", false, true, null) },
+                { typeof(Guid).FullName, CsToDb.New(OleDbType.Guid, "varchar", "varchar(36) NOT NULL", false, false, Guid.Empty) },{ typeof(Guid?).FullName, CsToDb.New(OleDbType.Guid, "varchar", "varchar(36)", false, true, null) },
             };
 
-        public override (int type, string dbtype, string dbtypeFull, bool? isnullable, object defaultValue)? GetDbInfo(Type type)
+        public override DbInfoResult GetDbInfo(Type type)
         {
-            if (_dicCsToDb.TryGetValue(type.FullName, out var trydc)) return new (int, string, string, bool?, object)?(((int)trydc.type, trydc.dbtype, trydc.dbtypeFull, trydc.isnullable, trydc.defaultValue));
+            if (_dicCsToDb.TryGetValue(type.FullName, out var trydc)) return new DbInfoResult((int)trydc.type, trydc.dbtype, trydc.dbtypeFull, trydc.isnullable, trydc.defaultValue);
             if (type.IsArray) return null;
             var enumType = type.IsEnum ? type : null;
             if (enumType == null && type.IsNullableType())
@@ -56,8 +57,8 @@ namespace FreeSql.MsAccess
             if (enumType != null)
             {
                 var newItem = enumType.GetCustomAttributes(typeof(FlagsAttribute), false).Any() ?
-                    (OleDbType.BigInt, "decimal", $"decimal(20,0){(type.IsEnum ? " NOT NULL" : "")}", false, type.IsEnum ? false : true, Enum.GetValues(enumType).GetValue(0)) :
-                    (OleDbType.Integer, "decimal", $"decimal(11,0){(type.IsEnum ? " NOT NULL" : "")}", false, type.IsEnum ? false : true, Enum.GetValues(enumType).GetValue(0));
+                    CsToDb.New(OleDbType.BigInt, "decimal", $"decimal(20,0){(type.IsEnum ? " NOT NULL" : "")}", false, type.IsEnum ? false : true, enumType.CreateInstanceGetDefaultValue()) :
+                    CsToDb.New(OleDbType.Integer, "decimal", $"decimal(11,0){(type.IsEnum ? " NOT NULL" : "")}", false, type.IsEnum ? false : true, enumType.CreateInstanceGetDefaultValue());
                 if (_dicCsToDb.ContainsKey(type.FullName) == false)
                 {
                     lock (_dicCsToDbLock)
@@ -66,12 +67,12 @@ namespace FreeSql.MsAccess
                             _dicCsToDb.Add(type.FullName, newItem);
                     }
                 }
-                return ((int)newItem.Item1, newItem.Item2, newItem.Item3, newItem.Item5, newItem.Item6);
+                return new DbInfoResult((int)newItem.type, newItem.dbtype, newItem.dbtypeFull, newItem.isnullable, newItem.defaultValue);
             }
             return null;
         }
 
-        protected override string GetComparisonDDLStatements(params (Type entityType, string tableName)[] objects)
+        protected override string GetComparisonDDLStatements(params TypeAndName[] objects)
         {
             var sb = new StringBuilder();
             var sbDeclare = new StringBuilder();
@@ -139,13 +140,14 @@ namespace FreeSql.MsAccess
                 };
                 Action<string> createTableIndex = tn =>
                 {
+                    var oldtn = tn;
                     tn = _commonUtils.QuoteSqlName(tn);
                     //创建表的索引
                     foreach (var uk in tb.Indexes)
                     {
                         sb.Append("CREATE ");
                         if (uk.IsUnique) sb.Append("UNIQUE ");
-                        sb.Append("INDEX ").Append(_commonUtils.QuoteSqlName(uk.Name)).Append(" ON ").Append(tn).Append("(");
+                        sb.Append("INDEX ").Append(_commonUtils.QuoteSqlName(ReplaceIndexName(uk.Name, oldtn))).Append(" ON ").Append(tn).Append("(");
                         foreach (var tbcol in uk.Columns)
                         {
                             sb.Append(_commonUtils.QuoteSqlName(tbcol.Column.Attribute.Name));
@@ -252,7 +254,7 @@ namespace FreeSql.MsAccess
                     }
                     return idxs;
                 };
-                Func<string, Dictionary<string, (string column, string sqlType, bool is_nullable, bool is_identity, string comment)>> getColumnsByTableName = tn =>
+                Func<string, Dictionary<string, getColumnsByTableNameResult>> getColumnsByTableName = tn =>
                 {
                     int table_name_index = 0, column_name_index = 0, is_nullable_index = 0, data_type_index = 0,
                         character_maximum_length_index = 0, character_octet_length_index = 0, numeric_precision_index = 0, numeric_scale_index = 0,
@@ -322,7 +324,7 @@ namespace FreeSql.MsAccess
                         }
                         return dtRow;
                     };
-                    var ret = new Dictionary<string, (string column, string sqlType, bool is_nullable, bool is_identity, string comment)>();
+                    var ret = new Dictionary<string, getColumnsByTableNameResult>();
                     foreach (DataRow row in schemaColumns.Rows)
                     {
                         if (string.Compare(row[table_name_index]?.ToString(), tn, true) != 0) continue;
@@ -341,7 +343,7 @@ namespace FreeSql.MsAccess
                         var datatype = dataTypeRow[datatype_TypeName_index]?.ToString().ToUpper();
                         if (numeric_precision > 0 && numeric_scale > 0) datatype = $"{datatype}({numeric_precision},{numeric_scale})";
                         else if (character_maximum_length > 0 && character_octet_length > 0) datatype = $"{datatype}({character_maximum_length})";
-                        ret.Add(column_name, (column_name, datatype, is_nullable, is_identity, comment));
+                        ret.Add(column_name, new getColumnsByTableNameResult(column_name, datatype, is_nullable, is_identity, comment));
                     }
                     return ret;
                 };
@@ -353,9 +355,10 @@ namespace FreeSql.MsAccess
                 {
                     foreach (var tbcol in tb.ColumnsByPosition)
                     {
+                        if (istmpatler) break;
                         var dbtypeNoneNotNull = Regex.Replace(tbcol.Attribute.DbType, @"NOT\s+NULL", "NULL");
                         if (tbstruct.TryGetValue(tbcol.Attribute.Name, out var tbstructcol) ||
-                        string.IsNullOrEmpty(tbcol.Attribute.OldName) == false && tbstruct.TryGetValue(tbcol.Attribute.OldName, out tbstructcol))
+                            string.IsNullOrEmpty(tbcol.Attribute.OldName) == false && tbstruct.TryGetValue(tbcol.Attribute.OldName, out tbstructcol))
                         {
                             if (tbstructcol.sqlType != "LONG" && tbcol.Attribute.DbType.StartsWith(tbstructcol.sqlType, StringComparison.CurrentCultureIgnoreCase) == false)
                                 istmpatler = true;
@@ -371,11 +374,15 @@ namespace FreeSql.MsAccess
                         //添加列
                         istmpatler = true;
                     }
+                }
+                if (istmpatler == false)
+                {
                     var dsuk = getIndexesByTableName(tbtmp);
                     foreach (var uk in tb.Indexes)
                     {
                         if (string.IsNullOrEmpty(uk.Name) || uk.Columns.Any() == false) continue;
-                        var dsukfind1 = dsuk.Where(a => string.Compare(a[1], uk.Name, true) == 0).ToArray();
+                        var ukname = ReplaceIndexName(uk.Name, tbname);
+                        var dsukfind1 = dsuk.Where(a => string.Compare(a[1], ukname, true) == 0).ToArray();
                         if (dsukfind1.Any() == false || dsukfind1.Length != uk.Columns.Length || dsukfind1.Where(a => (a[3] == "1") == uk.IsUnique && uk.Columns.Where(b => string.Compare(b.Column.Attribute.Name, a[0], true) == 0 && (a[2] == "1") == b.IsDesc).Any()).Count() != uk.Columns.Length)
                             istmpatler = true;
                     }
@@ -439,6 +446,23 @@ namespace FreeSql.MsAccess
                 }
             }
             return sb.Length == 0 ? null : sb.ToString();
+        }
+
+        class getColumnsByTableNameResult
+        {
+            public string column { get; }
+            public string sqlType { get; }
+            public bool is_nullable { get; }
+            public bool is_identity { get; }
+            public string comment { get; }
+            public getColumnsByTableNameResult(string column, string sqlType, bool is_nullable, bool is_identity, string comment)
+            {
+                this.column = column;
+                this.sqlType = sqlType;
+                this.is_nullable = is_nullable;
+                this.is_identity = is_identity;
+                this.comment = comment;
+            }
         }
 
         public override int ExecuteDDLStatements(string ddl)

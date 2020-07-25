@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FreeSql.Internal.Model;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -14,6 +15,8 @@ namespace FreeSql
 #if net40
 #else
         Task<DataTable> ToDataTableAsync(string field = null);
+        Task<Dictionary<TKey, T1>> ToDictionaryAsync<TKey>(Func<T1, TKey> keySelector);
+        Task<Dictionary<TKey, TElement>> ToDictionaryAsync<TKey, TElement>(Func<T1, TKey> keySelector, Func<T1, TElement> elementSelector);
         Task<List<T1>> ToListAsync(bool includeNestedMembers = false);
         Task<List<TTuple>> ToListAsync<TTuple>(string field);
 
@@ -51,6 +54,15 @@ namespace FreeSql
         DataTable ToDataTable(string field = null);
 
         /// <summary>
+        /// 以字典的形式返回查询结果<para></para>
+        /// 注意：字典的特点会导致返回的数据无序
+        /// </summary>
+        /// <typeparam name="TKey"></typeparam>
+        /// <param name="keySelector"></param>
+        /// <returns></returns>
+        Dictionary<TKey, T1> ToDictionary<TKey>(Func<T1, TKey> keySelector);
+        Dictionary<TKey, TElement> ToDictionary<TKey, TElement>(Func<T1, TKey> keySelector, Func<T1, TElement> elementSelector);
+        /// <summary>
         /// 执行SQL查询，返回 T1 实体所有字段的记录，记录不存在时返回 Count 为 0 的列表<para></para>
         /// 注意：<para></para>
         /// 1、ToList(a => a) 可以返回 a 所有实体<para></para>
@@ -67,7 +79,7 @@ namespace FreeSql
         /// <param name="size">数据块的大小</param>
         /// <param name="done">处理数据块</param>
         /// <param name="includeNestedMembers">false: 返回 2级 LeftJoin/InnerJoin/RightJoin 对象；true: 返回所有 LeftJoin/InnerJoin/RightJoin 的导航数据</param>
-        void ToChunk(int size, Action<List<T1>> done, bool includeNestedMembers = false);
+        void ToChunk(int size, Action<FetchCallbackArgs<List<T1>>> done, bool includeNestedMembers = false);
         /// <summary>
         /// 执行SQL查询，返回 field 指定字段的记录，并以元组或基础类型(int,string,long)接收，记录不存在时返回 Count 为 0 的列表
         /// </summary>
@@ -226,6 +238,13 @@ namespace FreeSql
         /// <param name="parms">参数</param>
         /// <returns></returns>
         TSelect RightJoin(string sql, object parms = null);
+        /// <summary>
+        /// 在 JOIN 位置插入 SQL 内容<para></para>
+        /// 如：.RawJoin("OUTER APPLY ( select id from t2 ) b")
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <returns></returns>
+        TSelect RawJoin(string sql);
 
         /// <summary>
         /// 原生sql语法条件，Where("id = ?id", new { id = 1 })
@@ -244,6 +263,13 @@ namespace FreeSql
         TSelect WhereIf(bool condition, string sql, object parms = null);
 
         /// <summary>
+        /// 动态过滤条件
+        /// </summary>
+        /// <param name="filter"></param>
+        /// <returns></returns>
+        TSelect WhereDynamicFilter(DynamicFilterInfo filter);
+
+        /// <summary>
         /// 禁用全局过滤功能，不传参数时将禁用所有
         /// </summary>
         /// <param name="name">零个或多个过滤器名字</param>
@@ -258,7 +284,9 @@ namespace FreeSql
         /// PostgreSQL: for update nowait<para></para>
         /// Oracle: for update nowait<para></para>
         /// Sqlite: 无效果<para></para>
-        /// 达梦: for update nowait
+        /// 达梦: for update nowait<para></para>
+        /// 人大金仓: for update nowait<para></para>
+        /// 神通: for update
         /// </summary>
         /// <param name="nowait">noawait</param>
         /// <returns></returns>

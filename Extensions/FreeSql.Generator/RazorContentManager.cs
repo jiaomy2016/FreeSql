@@ -7,17 +7,17 @@ namespace FreeSql.Generator
     class RazorContentManager
     {
         public static string 实体类_特性_cshtml =
-        #region 长内容
-            @"@using FreeSql.DatabaseModel;@{
+		#region 长内容
+			@"using FreeSql.DatabaseModel;@{
 var gen = Model as RazorModel;
 
 Func<string, string> GetAttributeString = attr => {
-	if (string.IsNullOrEmpty(attr)) return null;
+	if (string.IsNullOrEmpty(attr)) return """";
 	return string.Concat("", "", attr.Trim('[', ']'));
 };
-Func<DbColumnInfo, string> GetDefaultValue = col => {
-    if (col.CsType == typeof(string)) return "" = string.Empty;"";
-    return """";
+Func<string, string> GetDefaultValue = defval => {
+    if (string.IsNullOrEmpty(defval)) return """";
+    return "" = "" + defval + "";"";
 };
 }@{
 switch (gen.fsql.Ado.DataType) {
@@ -50,6 +50,7 @@ switch (gen.fsql.Ado.DataType) {
 		break;
 }
 }
+
 namespace @gen.NameSpace {
 
 @if (string.IsNullOrEmpty(gen.table.Comment) == false) {
@@ -67,8 +68,8 @@ namespace @gen.NameSpace {
 		@:/// @col.Coment.Replace(""\r\n"", ""\n"").Replace(""\n"", ""\r\n		/// "")
 		@:/// </summary>
 		}
-		@:@(""[JsonProperty"" + GetAttributeString(gen.GetColumnAttribute(col)) + ""]"")
-		@:public @gen.GetCsType(col) @gen.GetCsName(col.Name) { get; set; }@GetDefaultValue(col)
+		@:@(""[JsonProperty"" + GetAttributeString(gen.GetColumnAttribute(col, true)) + ""]"")
+		@:public @gen.GetCsType(col) @gen.GetCsName(col.Name) { get; set; }@GetDefaultValue(gen.GetColumnDefaultValue(col, false))
 @:
 	}
 	}
@@ -88,8 +89,12 @@ var gen = Model as RazorModel;
 var fks = gen.table.Foreigns;
 
 Func<string, string> GetAttributeString = attr => {
-	if (string.IsNullOrEmpty(attr)) return null;
+	if (string.IsNullOrEmpty(attr)) return """";
 	return string.Concat("", "", attr.Trim('[', ']'));
+};
+Func<string, string> GetDefaultValue = defval => {
+    if (string.IsNullOrEmpty(defval)) return """";
+    return "" = "" + defval + "";"";
 };
 
 Func<DbForeignInfo, string> GetFkObjectName = fkx => {
@@ -133,6 +138,7 @@ switch (gen.fsql.Ado.DataType) {
 		break;
 }
 }
+
 namespace @gen.NameSpace {
 
 @if (string.IsNullOrEmpty(gen.table.Comment) == false) {
@@ -153,9 +159,9 @@ namespace @gen.NameSpace {
 		@:/// @col.Coment.Replace(""\r\n"", ""\n"").Replace(""\n"", ""\r\n		/// "")
 		@:/// </summary>
 		}
-		@:@(""[JsonProperty"" + GetAttributeString(gen.GetColumnAttribute(col)) + ""]"")
+		@:@(""[JsonProperty"" + GetAttributeString(gen.GetColumnAttribute(col, true)) + ""]"")
 		if (findfks.Any() == false) {
-		@:public @gen.GetCsType(col) @csname { get; set; }
+		@:public @gen.GetCsType(col) @csname { get; set; }@GetDefaultValue(gen.GetColumnDefaultValue(col, false))
 		} else {
 		@:public @gen.GetCsType(col) @csname { get => _@csname; set {
 			@:if (_@csname == value) return;
@@ -164,7 +170,7 @@ namespace @gen.NameSpace {
 			@:@gen.GetCsName(GetFkObjectName(fkcok2)) = null;
 			}
 		@:} }
-		@:private @gen.GetCsType(col) _@csname;
+		@:private @gen.GetCsType(col) _@csname@GetDefaultValue(gen.GetColumnDefaultValue(col, false)).TrimEnd(';');
 		}
 @:
 	}
@@ -204,8 +210,7 @@ namespace @gen.NameSpace {
 		@:#endregion
 }
 @if (isManyToMany) {
-@:
-		@:#region 外键 => 导航属性，ManyToMany
+	var manyAny = false;
 	foreach (var ft in gen.tables) {
         if (ft != gen.table) {
             var ftfks = ft.Foreigns.Where(ftfk => ftfk.Columns.Where(ftfkcol => ftfkcol.IsPrimary == false).Any() == false).ToArray();
@@ -228,15 +233,30 @@ namespace @gen.NameSpace {
                     {
                         fkTableName = fkTableName.Replace(rightft.Schema + ""."", """");
                     }
+                    var middleTableName = (midft.Schema + ""."" + midft.Name).Trim('.');
+                    if (midft.Schema == ""public"" || midft.Schema == ""dbo"")
+                    {
+                        middleTableName = middleTableName.Replace(midft.Schema + ""."", """");
+                    }
                     var csname = rightft.Name;
+                    if (manyAny == false)
+                    {
+                        manyAny = true;
 @:
+		@:#region 外键 => 导航属性，ManyToMany
+                    }
+@:
+		@:[Navigate(ManyToMany = typeof(@gen.GetCsName(middleTableName)))]
 		@:public@(isLazying ? "" virtual"" : """") List<@gen.GetCsName(fkTableName)> @gen.GetCsName(csname)s { get; set; }
 				}
 			}
 		}
 	}
+    if (manyAny)
+    {
 @:
 		@:#endregion
+    }
 }
 	}
 @gen.GetMySqlEnumSetDefine()

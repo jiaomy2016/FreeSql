@@ -19,13 +19,13 @@ namespace FreeSql.MySql.Curd
 
             if (_whereCascadeExpression.Any())
                 foreach (var tb in _tables.Where(a => a.Type != SelectTableInfoType.Parent))
-                    tb.Cascade = _commonExpression.GetWhereCascadeSql(tb, _whereCascadeExpression);
+                    tb.Cascade = _commonExpression.GetWhereCascadeSql(tb, _whereCascadeExpression, true);
 
             var sb = new StringBuilder();
             var tbUnionsGt0 = tbUnions.Count > 1;
             for (var tbUnionsIdx = 0; tbUnionsIdx < tbUnions.Count; tbUnionsIdx++)
             {
-                if (tbUnionsIdx > 0) sb.Append(" \r\n\r\nUNION ALL\r\n\r\n");
+                if (tbUnionsIdx > 0) sb.Append("\r\n \r\nUNION ALL\r\n \r\n");
                 if (tbUnionsGt0) sb.Append(_select).Append(" * from (");
                 var tbUnion = tbUnions[tbUnionsIdx];
 

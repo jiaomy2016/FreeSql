@@ -2,6 +2,7 @@ using FreeSql.DataAnnotations;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using Xunit;
@@ -10,6 +11,142 @@ namespace FreeSql.Tests.MySqlConnector
 {
     public class MySqlCodeFirstTest
     {
+        [Fact]
+        public void Text_StringLength_1()
+        {
+            var str1 = string.Join(",", Enumerable.Range(0, 1000).Select(a => "我是中国人"));
+
+            var item1 = new TS_TEXT02 { Data = str1 };
+            Assert.Equal(1, g.mysql.Insert(item1).ExecuteAffrows());
+
+            var item2 = g.mysql.Select<TS_TEXT02>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(str1, item2.Data);
+
+            //NoneParameter
+            item1 = new TS_TEXT02 { Data = str1 };
+            Assert.Equal(1, g.mysql.Insert(item1).NoneParameter().ExecuteAffrows());
+        }
+        class TS_TEXT02
+        {
+            public Guid Id { get; set; }
+            [Column(StringLength = -1)]
+            public string Data { get; set; }
+        }
+
+        [Fact]
+        public void Text()
+        {
+            var str1 = string.Join(",", Enumerable.Range(0, 1000).Select(a => "我是中国人"));
+
+            var item1 = new TS_TEXT01 { Data = str1 };
+            Assert.Equal(1, g.mysql.Insert(item1).ExecuteAffrows());
+
+            var item2 = g.mysql.Select<TS_TEXT01>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(str1, item2.Data);
+
+            //NoneParameter
+            item1 = new TS_TEXT01 { Data = str1 };
+            Assert.Equal(1, g.mysql.Insert(item1).NoneParameter().ExecuteAffrows());
+        }
+        class TS_TEXT01
+        {
+            public Guid Id { get; set; }
+            [Column(DbType = "text")]
+            public string Data { get; set; }
+        }
+
+        [Fact]
+        public void Text_StringLength_2()
+        {
+            var str1 = string.Join(",", Enumerable.Range(0, 10000).Select(a => "我是中国人"));
+
+            var item1 = new TS_TEXT04 { Data = str1 };
+            Assert.Equal(1, g.mysql.Insert(item1).ExecuteAffrows());
+
+            var item2 = g.mysql.Select<TS_TEXT04>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(str1, item2.Data);
+
+            //NoneParameter
+            item1 = new TS_TEXT04 { Data = str1 };
+            Assert.Equal(1, g.mysql.Insert(item1).NoneParameter().ExecuteAffrows());
+        }
+        class TS_TEXT04
+        {
+            public Guid Id { get; set; }
+            [Column(StringLength = -2)]
+            public string Data { get; set; }
+        }
+
+        [Fact]
+        public void LongText()
+        {
+            var str1 = string.Join(",", Enumerable.Range(0, 10000).Select(a => "我是中国人"));
+
+            var item1 = new TS_TEXT03 { Data = str1 };
+            Assert.Equal(1, g.mysql.Insert(item1).ExecuteAffrows());
+
+            var item2 = g.mysql.Select<TS_TEXT03>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(str1, item2.Data);
+
+            //NoneParameter
+            item1 = new TS_TEXT03 { Data = str1 };
+            Assert.Equal(1, g.mysql.Insert(item1).NoneParameter().ExecuteAffrows());
+        }
+        class TS_TEXT03
+        {
+            public Guid Id { get; set; }
+            [Column(DbType = "longtext")]
+            public string Data { get; set; }
+        }
+
+        [Fact]
+        public void Blob()
+        {
+            var str1 = string.Join(",", Enumerable.Range(0, 10000).Select(a => "我是中国人"));
+            var data1 = Encoding.UTF8.GetBytes(str1);
+
+            var item1 = new TS_BLB01 { Data = data1 };
+            Assert.Equal(1, g.mysql.Insert(item1).ExecuteAffrows());
+
+            var item2 = g.mysql.Select<TS_BLB01>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(item1.Data.Length, item2.Data.Length);
+
+            var str2 = Encoding.UTF8.GetString(item2.Data);
+            Assert.Equal(str1, str2);
+
+            //NoneParameter
+            item1 = new TS_BLB01 { Data = data1 };
+            Assert.Equal(1, g.mysql.Insert<TS_BLB01>().NoneParameter().AppendData(item1).ExecuteAffrows());
+
+            item2 = g.mysql.Select<TS_BLB01>().Where(a => a.Id == item1.Id).First();
+            Assert.Equal(item1.Data.Length, item2.Data.Length);
+
+            str2 = Encoding.UTF8.GetString(item2.Data);
+            Assert.Equal(str1, str2);
+        }
+        class TS_BLB01
+        {
+            public Guid Id { get; set; }
+            [MaxLength(-2)]
+            public byte[] Data { get; set; }
+        }
+
+        [Fact]
+        public void StringLength()
+        {
+            var dll = g.mysql.CodeFirst.GetComparisonDDLStatements<TS_SLTB>();
+            g.mysql.CodeFirst.SyncStructure<TS_SLTB>();
+        }
+        class TS_SLTB
+        {
+            public Guid Id { get; set; }
+            [Column(StringLength = 50)]
+            public string Title { get; set; }
+
+            [Column(IsNullable = false, StringLength = 50)]
+            public string TitleSub { get; set; }
+        }
+
         [Fact]
         public void 表名中有点()
         {
@@ -57,6 +194,30 @@ namespace FreeSql.Tests.MySqlConnector
             Assert.Equal(item.标题, item2.标题);
 
             g.mysql.Update<测试中文表2>().SetSource(item2).ExecuteAffrows();
+
+
+
+            item.标题 = "测试标题更新";
+            Assert.Equal(1, g.mysql.Update<测试中文表2>().SetSource(item).ExecuteAffrows());
+            item2 = g.mysql.Select<测试中文表2>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
+
+            item.标题 = "测试标题更新_repo";
+            var repo = g.mysql.GetRepository<测试中文表2>();
+            Assert.Equal(1, repo.Update(item));
+            item2 = g.mysql.Select<测试中文表2>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
+
+            item.标题 = "测试标题更新_repo22";
+            Assert.Equal(1, repo.Update(item));
+            item2 = g.mysql.Select<测试中文表2>().Where(a => a.编号 == item.编号).First();
+            Assert.NotNull(item2);
+            Assert.Equal(item.编号, item2.编号);
+            Assert.Equal(item.标题, item2.标题);
         }
         class 测试中文表2
         {
@@ -77,6 +238,7 @@ namespace FreeSql.Tests.MySqlConnector
         {
             var sql = g.mysql.CodeFirst.GetComparisonDDLStatements<AddUniquesInfo>();
             g.mysql.CodeFirst.SyncStructure<AddUniquesInfo>();
+            g.mysql.CodeFirst.SyncStructure(typeof(AddUniquesInfo), "AddUniquesInfo1");
         }
         [Table(Name = "AddUniquesInfo", OldName = "AddUniquesInfo2")]
         [Index("uk_phone", "phone", true)]
@@ -120,57 +282,7 @@ namespace FreeSql.Tests.MySqlConnector
         {
 
             var sql = g.mysql.CodeFirst.GetComparisonDDLStatements<TableAllType>();
-            if (string.IsNullOrEmpty(sql) == false)
-            {
-                Assert.Equal(@"CREATE TABLE IF NOT EXISTS `cccddd`.`tb_alltype` ( 
-  `Id` INT(11) NOT NULL AUTO_INCREMENT, 
-  `testFieldBool` BIT(1) NOT NULL, 
-  `testFieldSByte` TINYINT(3) NOT NULL, 
-  `testFieldShort` SMALLINT(6) NOT NULL, 
-  `testFieldInt` INT(11) NOT NULL, 
-  `testFieldLong` BIGINT(20) NOT NULL, 
-  `testFieldByte` TINYINT(3) UNSIGNED NOT NULL, 
-  `testFieldUShort` SMALLINT(5) UNSIGNED NOT NULL, 
-  `testFieldUInt` INT(10) UNSIGNED NOT NULL, 
-  `testFieldULong` BIGINT(20) UNSIGNED NOT NULL, 
-  `testFieldDouble` DOUBLE NOT NULL, 
-  `testFieldFloat` FLOAT NOT NULL, 
-  `testFieldDecimal` DECIMAL(10,2) NOT NULL, 
-  `testFieldTimeSpan` TIME NOT NULL, 
-  `testFieldDateTime` DATETIME(3) NOT NULL, 
-  `testFieldBytes` VARBINARY(255), 
-  `testFieldString` VARCHAR(255), 
-  `testFieldGuid` VARCHAR(36), 
-  `testFieldBoolNullable` BIT(1), 
-  `testFieldSByteNullable` TINYINT(3), 
-  `testFieldShortNullable` SMALLINT(6), 
-  `testFieldIntNullable` INT(11), 
-  `testFielLongNullable` BIGINT(20), 
-  `testFieldByteNullable` TINYINT(3) UNSIGNED, 
-  `testFieldUShortNullable` SMALLINT(5) UNSIGNED, 
-  `testFieldUIntNullable` INT(10) UNSIGNED, 
-  `testFieldULongNullable` BIGINT(20) UNSIGNED, 
-  `testFieldDoubleNullable` DOUBLE, 
-  `testFieldFloatNullable` FLOAT, 
-  `testFieldDecimalNullable` DECIMAL(10,2), 
-  `testFieldTimeSpanNullable` TIME, 
-  `testFieldDateTimeNullable` DATETIME(3), 
-  `testFieldGuidNullable` VARCHAR(36), 
-  `testFieldPoint` POINT, 
-  `testFieldLineString` LINESTRING, 
-  `testFieldPolygon` POLYGON, 
-  `testFieldMultiPoint` MULTIPOINT, 
-  `testFieldMultiLineString` MULTILINESTRING, 
-  `testFieldMultiPolygon` MULTIPOLYGON, 
-  `testFieldEnum1` ENUM('E1','E2','E3') NOT NULL, 
-  `testFieldEnum1Nullable` ENUM('E1','E2','E3'), 
-  `testFieldEnum2` SET('F1','F2','F3') NOT NULL, 
-  `testFieldEnum2Nullable` SET('F1','F2','F3'), 
-  PRIMARY KEY (`Id`)
-) Engine=InnoDB;
-", sql);
-            }
-
+            Assert.True(string.IsNullOrEmpty(sql)); //测试运行两次后
             sql = g.mysql.CodeFirst.GetComparisonDDLStatements<Tb_alltype>();
         }
 
@@ -235,7 +347,8 @@ namespace FreeSql.Tests.MySqlConnector
                 testFieldSByteNullable = 99,
                 testFieldShort = short.MaxValue,
                 testFieldShortNullable = short.MinValue,
-                testFieldString = "我是中国人string",
+                testFieldString = "我是中国人string'\\?!@#$%^&*()_+{}}{~?><<>",
+                testFieldChar = 'X',
                 testFieldTimeSpan = TimeSpan.FromSeconds(999),
                 testFieldTimeSpanNullable = TimeSpan.FromSeconds(60),
                 testFieldUInt = uint.MaxValue,
@@ -248,8 +361,16 @@ namespace FreeSql.Tests.MySqlConnector
             };
             item2.Id = (int)insert.AppendData(item2).ExecuteIdentity();
             var newitem2 = select.Where(a => a.Id == item2.Id).ToOne();
+            Assert.Equal(item2.testFieldString, newitem2.testFieldString);
+            Assert.Equal(item2.testFieldChar, newitem2.testFieldChar);
+
+            item2.Id = (int)insert.NoneParameter().AppendData(item2).ExecuteIdentity();
+            newitem2 = select.Where(a => a.Id == item2.Id).ToOne();
+            Assert.Equal(item2.testFieldString, newitem2.testFieldString);
+            Assert.Equal(item2.testFieldChar, newitem2.testFieldChar);
 
             var items = select.ToList();
+            var itemstb = select.ToDataTable();
         }
 
 
@@ -393,6 +514,10 @@ namespace FreeSql.Tests.MySqlConnector
             public string TestFieldString { get; set; }
 
 
+            [JsonProperty, Column(Name = "testFieldChar", DbType = "char(1)", IsNullable = true)]
+            public char testFieldChar { get; set; }
+
+
             [JsonProperty, Column(Name = "testFieldTimeSpan", DbType = "time")]
             public TimeSpan TestFieldTimeSpan { get; set; }
 
@@ -497,6 +622,7 @@ namespace FreeSql.Tests.MySqlConnector
 
             public byte[] testFieldBytes { get; set; }
             public string testFieldString { get; set; }
+            public char testFieldChar { get; set; }
             public Guid testFieldGuid { get; set; }
 
             public bool? testFieldBoolNullable { get; set; }

@@ -35,11 +35,11 @@ namespace FreeSql.Sqlite.Curd
                 caseWhen.Append(_commonUtils.QuoteReadColumn(pk.CsType, pk.Attribute.MapType, _commonUtils.QuoteSqlName(pk.Attribute.Name)));
                 return;
             }
-            caseWhen.Append("CONCAT(");
+            caseWhen.Append("(");
             var pkidx = 0;
             foreach (var pk in _table.Primarys)
             {
-                if (pkidx > 0) caseWhen.Append(", ");
+                if (pkidx > 0) caseWhen.Append(" || '+' || ");
                 caseWhen.Append(_commonUtils.QuoteReadColumn(pk.CsType, pk.Attribute.MapType, _commonUtils.QuoteSqlName(pk.Attribute.Name)));
                 ++pkidx;
             }
@@ -53,11 +53,11 @@ namespace FreeSql.Sqlite.Curd
                 sb.Append(_commonUtils.FormatSql("{0}", _table.Primarys.First().GetMapValue(d)));
                 return;
             }
-            sb.Append("CONCAT(");
+            sb.Append("(");
             var pkidx = 0;
             foreach (var pk in _table.Primarys)
             {
-                if (pkidx > 0) sb.Append(", ");
+                if (pkidx > 0) sb.Append(" || '+' || ");
                 sb.Append(_commonUtils.FormatSql("{0}", pk.GetMapValue(d)));
                 ++pkidx;
             }
@@ -66,8 +66,8 @@ namespace FreeSql.Sqlite.Curd
 
 #if net40
 #else
-        public override Task<int> ExecuteAffrowsAsync() => base.SplitExecuteAffrowsAsync(200, 999);
-        public override Task<List<T1>> ExecuteUpdatedAsync() => base.SplitExecuteUpdatedAsync(200, 999);
+        public override Task<int> ExecuteAffrowsAsync() => base.SplitExecuteAffrowsAsync(_batchRowsLimit > 0 ? _batchRowsLimit : 200, _batchParameterLimit > 0 ? _batchParameterLimit : 999);
+        public override Task<List<T1>> ExecuteUpdatedAsync() => base.SplitExecuteUpdatedAsync(_batchRowsLimit > 0 ? _batchRowsLimit : 200, _batchParameterLimit > 0 ? _batchParameterLimit : 999);
 
         protected override Task<List<T1>> RawExecuteUpdatedAsync()
         {

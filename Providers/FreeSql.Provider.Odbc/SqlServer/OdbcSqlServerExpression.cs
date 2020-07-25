@@ -1,11 +1,10 @@
 ﻿using FreeSql.Internal;
-using FreeSql.Internal.Model;
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace FreeSql.Odbc.SqlServer
 {
@@ -37,7 +36,10 @@ namespace FreeSql.Odbc.SqlServer
                             case "System.Int64": return $"cast({getExp(operandExp)} as bigint)";
                             case "System.SByte": return $"cast({getExp(operandExp)} as tinyint)";
                             case "System.Single": return $"cast({getExp(operandExp)} as decimal(14,7))";
-                            case "System.String": return operandExp.Type.NullableTypeOrThis() == typeof(Guid) ? $"cast({getExp(operandExp)} as varchar(36))" : $"cast({getExp(operandExp)} as nvarchar)";
+                            case "System.String":
+                                return gentype == typeof(Guid) ?
+                                  $"cast({getExp(operandExp)} as varchar(36))" :
+                                  $"cast({getExp(operandExp)} as nvarchar{(gentype.IsNumberType() || gentype.IsEnum ? "(100)" : "(max)")})";
                             case "System.UInt16": return $"cast({getExp(operandExp)} as smallint)";
                             case "System.UInt32": return $"cast({getExp(operandExp)} as int)";
                             case "System.UInt64": return $"cast({getExp(operandExp)} as bigint)";
@@ -87,7 +89,10 @@ namespace FreeSql.Odbc.SqlServer
                             if (callExp.Method.DeclaringType.IsNumberType()) return "rand()";
                             return null;
                         case "ToString":
-                            if (callExp.Object != null) return callExp.Arguments.Count == 0 ? (callExp.Object.Type.NullableTypeOrThis() == typeof(Guid) ? $"cast({getExp(callExp.Object)} as varchar(36))" : $"cast({getExp(callExp.Object)} as nvarchar)") : null;
+                            var gentype2 = callExp.Object.Type.NullableTypeOrThis();
+                            if (callExp.Object != null) return callExp.Arguments.Count == 0 ? (gentype2 == typeof(Guid) ?
+                                    $"cast({getExp(callExp.Object)} as varchar(36))" :
+                                    $"cast({getExp(callExp.Object)} as nvarchar{(gentype2.IsNumberType() || gentype2.IsEnum ? "(100)" : "(max)")})") : null;
                             return null;
                     }
 
@@ -105,6 +110,7 @@ namespace FreeSql.Odbc.SqlServer
                     if (objType == null) objType = callExp.Method.DeclaringType;
                     if (objType != null || objType.IsArrayOrList())
                     {
+                        if (argIndex >= callExp.Arguments.Count) break;
                         tsc.SetMapColumnTmp(null);
                         var args1 = getExp(callExp.Arguments[argIndex]);
                         var oldMapType = tsc.SetMapTypeReturnOld(tsc.mapTypeTmp);
@@ -250,6 +256,20 @@ namespace FreeSql.Odbc.SqlServer
                         return $"({arg2} is null or {arg2} = '' or ltrim({arg2}) = '')";
                     case "Concat":
                         return _common.StringConcat(exp.Arguments.Select(a => getExp(a)).ToArray(), exp.Arguments.Select(a => a.Type).ToArray());
+                    case "Format":
+                        if (exp.Arguments[0].NodeType != ExpressionType.Constant) throw new Exception($"未实现函数表达式 {exp} 解析，参数 {exp.Arguments[0]} 必须为常量");
+                        var expArgs0 = ExpressionLambdaToSql(exp.Arguments[0], tsc);
+                        if (exp.Arguments.Count == 1) return expArgs0;
+                        var nchar = expArgs0.StartsWith("N'") ? "N" : "";
+                        var expArgs = exp.Arguments.Where((a, z) => z > 0).Select(a =>
+                        {
+                            var atype = (a as UnaryExpression)?.Operand.Type.NullableTypeOrThis() ?? a.Type.NullableTypeOrThis();
+                            if (atype == typeof(string)) return $"'+({ExpressionLambdaToSql(a, tsc)})+{nchar}'";
+                            if (atype == typeof(Guid)) return $"'+cast({ExpressionLambdaToSql(a, tsc)} as char(36))+{nchar}'";
+                            if (atype.IsNumberType()) return $"'+cast({ExpressionLambdaToSql(a, tsc)} as varchar)+{nchar}'";
+                            return $"'+cast({ExpressionLambdaToSql(a, tsc)} as nvarchar(max))+{nchar}'";
+                        }).ToArray();
+                        return string.Format(expArgs0, expArgs);
                 }
             }
             else
@@ -262,10 +282,10 @@ namespace FreeSql.Odbc.SqlServer
                     case "Contains":
                         var args0Value = getExp(exp.Arguments[0]);
                         if (args0Value == "NULL") return $"({left}) IS NULL";
-                        if (exp.Method.Name == "StartsWith") return $"({left}) LIKE {(args0Value.EndsWith("'") ? args0Value.Insert(args0Value.Length - 1, "%") : $"(cast({args0Value} as nvarchar)+'%')")}";
-                        if (exp.Method.Name == "EndsWith") return $"({left}) LIKE {(args0Value.StartsWith("'") ? args0Value.Insert(1, "%") : $"('%'+cast({args0Value} as nvarchar))")}";
+                        if (exp.Method.Name == "StartsWith") return $"({left}) LIKE {(args0Value.EndsWith("'") ? args0Value.Insert(args0Value.Length - 1, "%") : $"(cast({args0Value} as nvarchar(max))+'%')")}";
+                        if (exp.Method.Name == "EndsWith") return $"({left}) LIKE {(args0Value.StartsWith("'") ? args0Value.Insert(1, "%") : $"('%'+cast({args0Value} as nvarchar(max)))")}";
                         if (args0Value.StartsWith("'") && args0Value.EndsWith("'")) return $"({left}) LIKE {args0Value.Insert(1, "%").Insert(args0Value.Length, "%")}";
-                        return $"({left}) LIKE ('%'+cast({args0Value} as nvarchar)+'%')";
+                        return $"({left}) LIKE ('%'+cast({args0Value} as nvarchar(max))+'%')";
                     case "ToLower": return $"lower({left})";
                     case "ToUpper": return $"upper({left})";
                     case "Substring":
@@ -281,9 +301,9 @@ namespace FreeSql.Odbc.SqlServer
                             var locateArgs1 = getExp(exp.Arguments[1]);
                             if (long.TryParse(locateArgs1, out var testtrylng2)) locateArgs1 = (testtrylng2 + 1).ToString();
                             else locateArgs1 += "+1";
-                            return $"(charindex({left}, {indexOfFindStr}, {locateArgs1})-1)";
+                            return $"(charindex({indexOfFindStr}, {left}, {locateArgs1})-1)";
                         }
-                        return $"(charindex({left}, {indexOfFindStr})-1)";
+                        return $"(charindex({indexOfFindStr}, {left})-1)";
                     case "PadLeft":
                         if (exp.Arguments.Count == 1) return $"lpad({left}, {getExp(exp.Arguments[0])})";
                         return $"lpad({left}, {getExp(exp.Arguments[0])}, {getExp(exp.Arguments[1])})";
@@ -336,7 +356,7 @@ namespace FreeSql.Odbc.SqlServer
                 switch (exp.Method.Name)
                 {
                     case "Compare": return $"({getExp(exp.Arguments[0])} - ({getExp(exp.Arguments[1])}))";
-                    case "DaysInMonth": return $"datepart(day, dateadd(day, -1, dateadd(month, 1, cast({getExp(exp.Arguments[0])} as varchar) + '-' + cast({getExp(exp.Arguments[1])} as varchar) + '-1')))";
+                    case "DaysInMonth": return $"datepart(day, dateadd(day, -1, dateadd(month, 1, cast({getExp(exp.Arguments[0])} as varchar(100)) + '-' + cast({getExp(exp.Arguments[1])} as varchar(100)) + '-1')))";
                     case "Equals": return $"({getExp(exp.Arguments[0])} = {getExp(exp.Arguments[1])})";
 
                     case "IsLeapYear":
@@ -373,7 +393,52 @@ namespace FreeSql.Odbc.SqlServer
                         break;
                     case "Equals": return $"({left} = {args1})";
                     case "CompareTo": return $"datediff(second,{args1},{left})";
-                    case "ToString": return exp.Arguments.Count == 0 ? $"convert(varchar, {left}, 121)" : null;
+                    case "ToString":
+                        if (left.EndsWith(" as datetime)") == false) left = $"cast({left} as datetime)";
+                        if (exp.Arguments.Count == 0) return $"convert(varchar, {left}, 121)";
+                        switch (args1.TrimStart('N'))
+                        {
+                            case "'yyyy-MM-dd HH:mm:ss'": return $"convert(char(19), {left}, 120)";
+                            case "'yyyy-MM-dd HH:mm'": return $"substring(convert(char(19), {left}, 120), 1, 16)";
+                            case "'yyyy-MM-dd HH'": return $"substring(convert(char(19), {left}, 120), 1, 13)";
+                            case "'yyyy-MM-dd'": return $"convert(char(10), {left}, 23)";
+                            case "'yyyy-MM'": return $"substring(convert(char(10), {left}, 23), 1, 7)";
+                            case "'yyyyMMdd'": return $"convert(char(8), {left}, 112)";
+                            case "'yyyyMM'": return $"substring(convert(char(8), {left}, 112), 1, 6)";
+                            case "'yyyy'": return $"substring(convert(char(8), {left}, 112), 1, 4)";
+                            case "'HH:mm:ss'": return $"convert(char(8), {left}, 24)";
+                        }
+                        var isMatched = false;
+                        var nchar = args1.StartsWith("N'") ? "N" : "";
+                        args1 = Regex.Replace(args1, "(yyyy|yy|MM|M|dd|d|HH|H|hh|h|mm|m|ss|s|tt|t)", m =>
+                        {
+                            isMatched = true;
+                            switch (m.Groups[1].Value)
+                            {
+                                case "yyyy": return $"' + substring(convert(char(8), {left}, 112), 1, 4) + {nchar}'";
+                                case "yy": return $"' + substring(convert(char(6), {left}, 12), 1, 2) + {nchar}'";
+                                case "MM": return $"' + substring(convert(char(6), {left}, 12), 3, 2) + {nchar}'";
+                                case "M": return $"' + case when substring(convert(char(6), {left}, 12), 3, 1) = '0' then substring(convert(char(6), {left}, 12), 4, 1) else substring(convert(char(6), {left}, 12), 3, 2) end + {nchar}'";
+                                case "dd": return $"' + substring(convert(char(6), {left}, 12), 5, 2) + {nchar}'";
+                                case "d": return $"' + case when substring(convert(char(6), {left}, 12), 5, 1) = '0' then substring(convert(char(6), {left}, 12), 6, 1) else substring(convert(char(6), {left}, 12), 5, 2) end + {nchar}'";
+                                case "HH": return $"' + substring(convert(char(8), {left}, 24), 1, 2) + {nchar}'";
+                                case "H": return $"' + case when substring(convert(char(8), {left}, 24), 1, 1) = '0' then substring(convert(char(8), {left}, 24), 2, 1) else substring(convert(char(8), {left}, 24), 1, 2) end + {nchar}'";
+                                case "hh":
+                                    return $"' + case cast(case when substring(convert(char(8), {left}, 24), 1, 1) = '0' then substring(convert(char(8), {left}, 24), 2, 1) else substring(convert(char(8), {left}, 24), 1, 2) end as int) % 12" +
+                             $"when 0 then '12' when 1 then '01' when 2 then '02' when 3 then '03' when 4 then '04' when 5 then '05' when 6 then '06' when 7 then '07' when 8 then '08' when 9 then '09' when 10 then '10' when 11 then '11' end + {nchar}'";
+                                case "h":
+                                    return $"' + case cast(case when substring(convert(char(8), {left}, 24), 1, 1) = '0' then substring(convert(char(8), {left}, 24), 2, 1) else substring(convert(char(8), {left}, 24), 1, 2) end as int) % 12" +
+                              $"when 0 then '12' when 1 then '1' when 2 then '2' when 3 then '3' when 4 then '4' when 5 then '5' when 6 then '6' when 7 then '7' when 8 then '8' when 9 then '9' when 10 then '10' when 11 then '11' end + {nchar}'";
+                                case "mm": return $"' + substring(convert(char(8), {left}, 24), 4, 2) + {nchar}'";
+                                case "m": return $"' + case when substring(convert(char(8), {left}, 24), 4, 1) = '0' then substring(convert(char(8), {left}, 24), 5, 1) else substring(convert(char(8), {left}, 24), 4, 2) end + {nchar}'";
+                                case "ss": return $"' + substring(convert(char(8), {left}, 24), 7, 2) + {nchar}'";
+                                case "s": return $"' + case when substring(convert(char(8), {left}, 24), 7, 1) = '0' then substring(convert(char(8), {left}, 24), 8, 1) else substring(convert(char(8), {left}, 24), 7, 2) end + {nchar}'";
+                                case "tt": return $"' + case when cast(case when substring(convert(char(8), {left}, 24), 1, 1) = '0' then substring(convert(char(8), {left}, 24), 2, 1) else substring(convert(char(8), {left}, 24), 1, 2) end as int) >= 12 then 'PM' else 'AM' end + {nchar}'";
+                                case "t": return $"' + case when cast(case when substring(convert(char(8), {left}, 24), 1, 1) = '0' then substring(convert(char(8), {left}, 24), 2, 1) else substring(convert(char(8), {left}, 24), 1, 2) end as int) >= 12 then 'P' else 'A' end + {nchar}'";
+                            }
+                            return m.Groups[0].Value;
+                        });
+                        return isMatched == false ? args1 : $"({args1})";
                 }
             }
             return null;
@@ -409,7 +474,7 @@ namespace FreeSql.Odbc.SqlServer
                     case "Subtract": return $"({left}-({args1}))";
                     case "Equals": return $"({left} = {args1})";
                     case "CompareTo": return $"({left}-({args1}))";
-                    case "ToString": return $"cast({left} as varchar)";
+                    case "ToString": return $"cast({left} as varchar(100))";
                 }
             }
             return null;
@@ -432,7 +497,11 @@ namespace FreeSql.Odbc.SqlServer
                     case "ToInt64": return $"cast({getExp(exp.Arguments[0])} as bigint)";
                     case "ToSByte": return $"cast({getExp(exp.Arguments[0])} as tinyint)";
                     case "ToSingle": return $"cast({getExp(exp.Arguments[0])} as decimal(14,7))";
-                    case "ToString": return exp.Arguments[0].Type.NullableTypeOrThis() == typeof(Guid) ? $"cast({getExp(exp.Arguments[0])} as varchar(36))" : $"cast({getExp(exp.Arguments[0])} as nvarchar)";
+                    case "ToString":
+                        var gentype = exp.Arguments[0].Type.NullableTypeOrThis();
+                        return gentype == typeof(Guid) ?
+                            $"cast({getExp(exp.Arguments[0])} as varchar(36))" :
+                            $"cast({getExp(exp.Arguments[0])} as nvarchar{(gentype.IsNumberType() || gentype.IsEnum ? "(100)" : "(max)")})";
                     case "ToUInt16": return $"cast({getExp(exp.Arguments[0])} as smallint)";
                     case "ToUInt32": return $"cast({getExp(exp.Arguments[0])} as int)";
                     case "ToUInt64": return $"cast({getExp(exp.Arguments[0])} as bigint)";

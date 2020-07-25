@@ -1,7 +1,7 @@
 ﻿using FreeSql.Internal;
 using FreeSql.Internal.Model;
 using Oracle.ManagedDataAccess.Client;
-using SafeObjectPool;
+using FreeSql.Internal.ObjectPool;
 using System;
 using System.Collections;
 using System.Data.Common;
@@ -12,8 +12,8 @@ namespace FreeSql.Oracle
 {
     class OracleAdo : FreeSql.Internal.CommonProvider.AdoProvider
     {
-        public OracleAdo() : base(DataType.Oracle) { }
-        public OracleAdo(CommonUtils util, string masterConnectionString, string[] slaveConnectionStrings, Func<DbConnection> connectionFactory) : base(DataType.Oracle)
+        public OracleAdo() : base(DataType.Oracle, null, null) { }
+        public OracleAdo(CommonUtils util, string masterConnectionString, string[] slaveConnectionStrings, Func<DbConnection> connectionFactory) : base(DataType.Oracle, masterConnectionString, slaveConnectionStrings)
         {
             base._util = util;
             if (connectionFactory != null)
@@ -42,8 +42,10 @@ namespace FreeSql.Oracle
                 return $"hextoraw('{CommonUtils.BytesSqlRaw(param as byte[])}')";
             else if (param is bool || param is bool?)
                 return (bool)param ? 1 : 0;
-            else if (param is string || param is char)
+            else if (param is string)
                 return string.Concat("'", param.ToString().Replace("'", "''"), "'");
+            else if (param is char)
+                return string.Concat("'", param.ToString().Replace("'", "''").Replace('\0', ' '), "'");
             else if (param is Enum)
                 return ((Enum)param).ToInt64();
             else if (decimal.TryParse(string.Concat(param), out var trydec))

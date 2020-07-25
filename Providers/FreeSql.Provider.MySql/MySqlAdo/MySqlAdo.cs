@@ -1,20 +1,24 @@
 ﻿using FreeSql.Internal;
 using FreeSql.Internal.Model;
-using MySql.Data.MySqlClient;
-using SafeObjectPool;
+using FreeSql.Internal.ObjectPool;
 using System;
 using System.Collections;
 using System.Data.Common;
 using System.Text;
 using System.Threading;
+#if MySqlConnector
+using MySqlConnector;
+#else
+using MySql.Data.MySqlClient;
+#endif
 
 namespace FreeSql.MySql
 {
     class MySqlAdo : FreeSql.Internal.CommonProvider.AdoProvider
     {
 
-        public MySqlAdo() : base(DataType.MySql) { }
-        public MySqlAdo(CommonUtils util, string masterConnectionString, string[] slaveConnectionStrings, Func<DbConnection> connectionFactory) : base(DataType.MySql)
+        public MySqlAdo() : base(DataType.MySql, null, null) { }
+        public MySqlAdo(CommonUtils util, string masterConnectionString, string[] slaveConnectionStrings, Func<DbConnection> connectionFactory) : base(DataType.MySql, masterConnectionString, slaveConnectionStrings)
         {
             base._util = util;
             if (connectionFactory != null)
@@ -41,10 +45,12 @@ namespace FreeSql.MySql
 
             if (param is bool || param is bool?)
                 return (bool)param ? 1 : 0;
-            else if (param is string || param is char)
-                return string.Concat("'", param.ToString().Replace("'", "''"), "'");
+            else if (param is string)
+                return string.Concat("'", param.ToString().Replace("'", "''").Replace("\\", "\\\\"), "'"); //只有 mysql 需要处理反斜杠
+            else if (param is char)
+                return string.Concat("'", param.ToString().Replace("'", "''").Replace("\\", "\\\\").Replace('\0', ' '), "'");
             else if (param is Enum)
-                return string.Concat("'", param.ToString().Replace("'", "''"), "'"); //((Enum)val).ToInt64();
+                return string.Concat("'", param.ToString().Replace("'", "''").Replace("\\", "\\\\"), "'"); //((Enum)val).ToInt64();
             else if (decimal.TryParse(string.Concat(param), out var trydec))
                 return param;
             else if (param is DateTime || param is DateTime?)
@@ -54,11 +60,11 @@ namespace FreeSql.MySql
             else if (param is byte[])
                 return $"0x{CommonUtils.BytesSqlRaw(param as byte[])}";
             else if (param is MygisGeometry)
-                return string.Concat("ST_GeomFromText('", (param as MygisGeometry).AsText().Replace("'", "''"), "')");
+                return string.Concat("ST_GeomFromText('", (param as MygisGeometry).AsText().Replace("'", "''").Replace("\\", "\\\\"), "')");
             else if (param is IEnumerable)
                 return AddslashesIEnumerable(param, mapType, mapColumn);
 
-            return string.Concat("'", param.ToString().Replace("'", "''"), "'");
+            return string.Concat("'", param.ToString().Replace("'", "''").Replace("\\", "\\\\"), "'");
         }
 
         protected override DbCommand CreateCommand()

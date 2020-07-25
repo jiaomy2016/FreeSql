@@ -9,6 +9,16 @@
             保存或添加，如果主键有值则尝试 Update，如果影响的行为 0 则尝试 Insert
             </summary>
         </member>
+        <member name="T:FreeSql.Tests.SqlServer.SqlServerCodeFirstTest.tbdot01">
+            <summary>
+            表中带点
+            </summary>
+        </member>
+        <member name="P:FreeSql.Tests.SqlServer.SqlServerCodeFirstTest.tbdot01.id">
+            <summary>
+            主键
+            </summary>
+        </member>
         <member name="T:FreeSql.Tests.UnitTest1.NewsArticle">
             <summary>
             
@@ -17,62 +27,62 @@
         <member name="P:FreeSql.Tests.UnitTest1.NewsArticle.ArticleId">
             <summary>
             
-            </summary>		
+            </summary>        
         </member>
         <member name="P:FreeSql.Tests.UnitTest1.NewsArticle.ArticleTitle">
             <summary>
             
-            </summary>		
+            </summary>        
         </member>
         <member name="P:FreeSql.Tests.UnitTest1.NewsArticle.CategoryId">
             <summary>
             
-            </summary>		
+            </summary>        
         </member>
         <member name="P:FreeSql.Tests.UnitTest1.NewsArticle.ChannelId">
             <summary>
             
-            </summary>		
+            </summary>        
         </member>
         <member name="P:FreeSql.Tests.UnitTest1.NewsArticle.TypeId">
             <summary>
             类型
-            </summary>		
+            </summary>        
         </member>
         <member name="P:FreeSql.Tests.UnitTest1.NewsArticle.Summary">
             <summary>
             内容简介
-            </summary>		
+            </summary>        
         </member>
         <member name="P:FreeSql.Tests.UnitTest1.NewsArticle.Thumbnail">
             <summary>
             缩略图
-            </summary>		
+            </summary>        
         </member>
         <member name="P:FreeSql.Tests.UnitTest1.NewsArticle.Hits">
             <summary>
             点击量
-            </summary>		
+            </summary>        
         </member>
         <member name="P:FreeSql.Tests.UnitTest1.NewsArticle.IsDisplay">
             <summary>
             
-            </summary>		
+            </summary>        
         </member>
         <member name="P:FreeSql.Tests.UnitTest1.NewsArticle.Status">
             <summary>
             
-            </summary>		
+            </summary>        
         </member>
         <member name="P:FreeSql.Tests.UnitTest1.NewsArticle.CreateTime">
             <summary>
             
-            </summary>		
+            </summary>        
         </member>
         <member name="P:FreeSql.Tests.UnitTest1.NewsArticle.ReleaseTime">
             <summary>
             
-            </summary>		
+            </summary>        
         </member>
         <member name="P:FreeSql.Tests.UnitTest1.Templates.Id2">
             <summary>
@@ -211,6 +221,56 @@
             <param name="that"></param>
             <param name="size"></param>
             <returns></returns>
+        </member>
+        <member name="T:FreeSql.Tests.UnitTest3.BaseModel">
+            <summary>
+            父级
+            </summary>
+        </member>
+        <member name="P:FreeSql.Tests.UnitTest3.BaseModel.UserID">
+            <summary>
+            创建人
+            </summary>
+        </member>
+        <member name="P:FreeSql.Tests.UnitTest3.BaseModel.CreateTime">
+            <summary>
+            创建时间
+            </summary>
+        </member>
+        <member name="P:FreeSql.Tests.UnitTest3.BaseModel.Description">
+            <summary>
+            备注
+            </summary>
+        </member>
+        <member name="P:FreeSql.Tests.UnitTest3.Menu.Name">
+            <summary>
+            菜单名称
+            </summary>
+        </member>
+        <member name="P:FreeSql.Tests.UnitTest3.Menu.EnName">
+            <summary>
+            英文名称
+            </summary>
+        </member>
+        <member name="P:FreeSql.Tests.UnitTest3.Menu.Url">
+            <summary>
+            链接地址
+            </summary>
+        </member>
+        <member name="P:FreeSql.Tests.UnitTest3.Menu.ParentID">
+            <summary>
+            父级菜单 一级为 0
+            </summary>
+        </member>
+        <member name="P:FreeSql.Tests.UnitTest3.Menu.OperationIds">
+            <summary>
+            按钮操作 逗号分隔
+            </summary>
+        </member>
+        <member name="P:FreeSql.Tests.UnitTest3.Menu.Parent">
+            <summary>
+            导航属性
+            </summary>
         </member>
         <member name="T:SaleIDO.Entity.Storeage.AdjustPriceOrder">
             <summary>

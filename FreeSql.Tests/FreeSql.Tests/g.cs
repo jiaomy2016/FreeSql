@@ -29,7 +29,7 @@ public class g
         //.UseConnectionFactory(FreeSql.DataType.PostgreSQL, () => new Npgsql.NpgsqlConnection("Host=192.168.164.10;Port=5432;Username=postgres;Password=123456;Database=tedb;Pooling=true;"))
         .UseAutoSyncStructure(true)
         //.UseGenerateCommandParameterWithLambda(true)
-        .UseSyncStructureToLower(true)
+        .UseNameConvert(FreeSql.Internal.NameConvertType.ToLower)
         .UseLazyLoading(true)
         .UseMonitorCommand(
             cmd => Trace.WriteLine("\r\n线程" + Thread.CurrentThread.ManagedThreadId + ": " + cmd.CommandText) //监听SQL命令对象，在执行前
@@ -55,12 +55,12 @@ public class g
     public static IFreeSql sqlserver => sqlserverLazy.Value;
 
     static Lazy<IFreeSql> oracleLazy = new Lazy<IFreeSql>(() => new FreeSql.FreeSqlBuilder()
-        .UseConnectionString(FreeSql.DataType.Oracle, "user id=user1;password=123456;data source=//127.0.0.1:1521/XE;Pooling=true;Max Pool Size=2")
-        //.UseConnectionFactory(FreeSql.DataType.Oracle, () => new Oracle.ManagedDataAccess.Client.OracleConnection("user id=user1;password=123456;data source=//127.0.0.1:1521/XE;Pooling=true;"))
+        .UseConnectionString(FreeSql.DataType.Oracle, "user id=1user;password=123456;data source=//127.0.0.1:1521/XE;Pooling=true;Max Pool Size=2")
+        //.UseConnectionFactory(FreeSql.DataType.Oracle, () => new Oracle.ManagedDataAccess.Client.OracleConnection("user id=1user;password=123456;data source=//127.0.0.1:1521/XE;Pooling=true;"))
         .UseAutoSyncStructure(true)
         //.UseGenerateCommandParameterWithLambda(true)
         .UseLazyLoading(true)
-        .UseSyncStructureToUpper(true)
+        .UseNameConvert(FreeSql.Internal.NameConvertType.ToUpper)
         //.UseNoneCommandParameter(true)
 
         .UseMonitorCommand(
@@ -105,4 +105,45 @@ public class g
             )
         .Build());
     public static IFreeSql msaccess => msaccessLazy.Value;
+
+
+    static Lazy<IFreeSql> damengLazy = new Lazy<IFreeSql>(() => new FreeSql.FreeSqlBuilder()
+        .UseConnectionString(FreeSql.DataType.Dameng, "server=127.0.0.1;port=5236;user id=2user;password=123456789;database=2user;poolsize=5")
+         //.UseConnectionFactory(FreeSql.DataType.Dameng, () => new Dm.DmConnection("data source=127.0.0.1:5236;user id=2user;password=123456789;Pooling=true;poolsize=2"))
+         .UseAutoSyncStructure(true)
+        .UseLazyLoading(true)
+        .UseNameConvert(FreeSql.Internal.NameConvertType.ToUpper)
+        //.UseNoneCommandParameter(true)
+
+        .UseMonitorCommand(
+            cmd => Trace.WriteLine(cmd.CommandText), //监听SQL命令对象，在执行前
+            (cmd, traceLog) => Console.WriteLine(traceLog))
+        .Build());
+    public static IFreeSql dameng => damengLazy.Value;
+
+    static Lazy<IFreeSql> shentongLazy = new Lazy<IFreeSql>(() =>
+    {
+        var connString = new System.Data.OscarClient.OscarConnectionStringBuilder {
+            Host = "192.168.164.10",
+            Port = 2003,
+            UserName = "SYSDBA",
+            Password = "szoscar55",
+            Database = "OSRDB",
+            Pooling = true,
+            MaxPoolSize = 2
+        };
+        return new FreeSql.FreeSqlBuilder()
+        .UseConnectionString(FreeSql.DataType.ShenTong, "HOST=192.168.164.10;PORT=2003;DATABASE=OSRDB;USERNAME=SYSDBA;PASSWORD=szoscar55;MAXPOOLSIZE=2")
+        //.UseConnectionFactory(FreeSql.DataType.ShenTong, () => new System.Data.OscarClient.OscarConnection("HOST=192.168.164.10;PORT=2003;DATABASE=OSRDB;USERNAME=SYSDBA;PASSWORD=szoscar55;MAXPOOLSIZE=2"))
+        .UseAutoSyncStructure(true)
+        //.UseGenerateCommandParameterWithLambda(true)
+        .UseNameConvert(FreeSql.Internal.NameConvertType.ToUpper)
+        .UseLazyLoading(true)
+        .UseMonitorCommand(
+            cmd => Trace.WriteLine("\r\n线程" + Thread.CurrentThread.ManagedThreadId + ": " + cmd.CommandText) //监听SQL命令对象，在执行前
+            //, (cmd, traceLog) => Console.WriteLine(traceLog)
+            )
+        .Build();
+    });
+    public static IFreeSql shentong => shentongLazy.Value;
 }

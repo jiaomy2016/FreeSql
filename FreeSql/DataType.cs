@@ -22,7 +22,7 @@ namespace FreeSql
         Odbc,
 
         /// <summary>
-        /// 武汉达梦数据库有限公司
+        /// 武汉达梦数据库有限公司，基于 Odbc 的实现
         /// </summary>
         OdbcDameng,
 
@@ -30,5 +30,20 @@ namespace FreeSql
         /// Microsoft Office Access 是由微软发布的关联式数据库管理系统
         /// </summary>
         MsAccess,
+
+        /// <summary>
+        /// 武汉达梦数据库有限公司，基于 DmProvider.dll 的实现
+        /// </summary>
+        Dameng,
+
+        /// <summary>
+        /// 北京人大金仓信息技术股份有限公司，基于 Odbc 的实现
+        /// </summary>
+        OdbcKingbaseES,
+
+        /// <summary>
+        ///  天津神舟通用数据技术有限公司，基于 System.Data.OscarClient.dll 的实现
+        /// </summary>
+        ShenTong
     }
 }

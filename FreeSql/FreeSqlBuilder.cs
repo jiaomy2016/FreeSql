@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Data.Common;
 using System.Linq;
 using System.Reflection;
@@ -7,7 +9,7 @@ using FreeSql.Internal;
 
 namespace FreeSql
 {
-    public class FreeSqlBuilder
+    public partial class FreeSqlBuilder
     {
         DataType _dataType;
         string _masterConnectionString;
@@ -20,7 +22,9 @@ namespace FreeSql
         bool _isNoneCommandParameter = false;
         bool _isGenerateCommandParameterWithLambda = false;
         bool _isLazyLoading = false;
+        bool _isExitAutoDisposePool = true;
         StringConvertType _entityPropertyConvertType = StringConvertType.None;
+        NameConvertType _nameConvertType = NameConvertType.None;
         Action<DbCommand> _aopCommandExecuting = null;
         Action<DbCommand, string> _aopCommandExecuted = null;
         Type _providerType = null;
@@ -68,33 +72,14 @@ namespace FreeSql
             return this;
         }
         /// <summary>
-        /// 【开发环境必备】自动同步实体结构到数据库，程序运行中检查实体表是否存在，然后创建或修改
+        /// 【开发环境必备】自动同步实体结构到数据库，程序运行中检查实体表是否存在，然后创建或修改<para></para>
+        /// 注意：生产环境中谨慎使用
         /// </summary>
-        /// <param name="value">true:运行时检查自动同步结构, false:不同步结构</param>
+        /// <param name="value">true:运行时检查自动同步结构, false:不同步结构(默认)</param>
         /// <returns></returns>
         public FreeSqlBuilder UseAutoSyncStructure(bool value)
         {
             _isAutoSyncStructure = value;
-            return this;
-        }
-        /// <summary>
-        /// 转小写同步结构
-        /// </summary>
-        /// <param name="value">true:转小写, false:不转</param>
-        /// <returns></returns>
-        public FreeSqlBuilder UseSyncStructureToLower(bool value)
-        {
-            _isSyncStructureToLower = value;
-            return this;
-        }
-        /// <summary>
-        /// 转大写同步结构
-        /// </summary>
-        /// <param name="value">true:转大写, false:不转</param>
-        /// <returns></returns>
-        public FreeSqlBuilder UseSyncStructureToUpper(bool value)
-        {
-            _isSyncStructureToUpper = value;
             return this;
         }
         /// <summary>
@@ -120,7 +105,11 @@ namespace FreeSql
             return this;
         }
         /// <summary>
-        /// 是否生成命令参数化执行，针对 lambda 表达式解析
+        /// 是否生成命令参数化执行，针对 lambda 表达式解析<para></para>
+        /// 注意：常量不会参数化，变量才会做参数化<para></para>
+        /// var id = 100;
+        /// fsql.Select&lt;T&gt;().Where(a => a.id == id) 会参数化<para></para>
+        /// fsql.Select&lt;T&gt;().Where(a => a.id == 100) 不会参数化
         /// </summary>
         /// <param name="value"></param>
         /// <returns></returns>
@@ -153,15 +142,26 @@ namespace FreeSql
         }
 
         /// <summary>
-        /// 自动转换实体属性名称 Entity Property -> Db Filed
-        /// <para></para>
-        /// *不会覆盖 [Column] 特性设置的Name
+        /// 实体类名 -> 数据库表名，命名转换（类名、属性名都生效）<para></para>
+        /// 优先级小于 [Table(Name = "xxx")]、[Column(Name = "xxx")]
         /// </summary>
         /// <param name="convertType"></param>
         /// <returns></returns>
-        public FreeSqlBuilder UseEntityPropertyNameConvert(StringConvertType convertType)
+        public FreeSqlBuilder UseNameConvert(NameConvertType convertType)
         {
-            _entityPropertyConvertType = convertType;
+            _nameConvertType = convertType;
+            return this;
+        }
+
+        /// <summary>
+        /// 监听 AppDomain.CurrentDomain.ProcessExit/Console.CancelKeyPress 事件自动释放连接池<para></para>
+        /// 默认值: true
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public FreeSqlBuilder UseExitAutoDisposePool(bool value)
+        {
+            _isExitAutoDisposePool = value;
             return this;
         }
 
@@ -230,6 +230,21 @@ namespace FreeSql
                         if (type == null) throwNotFind("FreeSql.Provider.MsAccess.dll", "FreeSql.MsAccess.MsAccessProvider<>");
                         break;
 
+                    case DataType.Dameng:
+                        type = Type.GetType("FreeSql.Dameng.DamengProvider`1,FreeSql.Provider.Dameng")?.MakeGenericType(typeof(TMark));
+                        if (type == null) throwNotFind("FreeSql.Provider.Dameng.dll", "FreeSql.Dameng.DamengProvider<>");
+                        break;
+
+                    case DataType.OdbcKingbaseES:
+                        type = Type.GetType("FreeSql.Odbc.KingbaseES.OdbcKingbaseESProvider`1,FreeSql.Provider.Odbc")?.MakeGenericType(typeof(TMark));
+                        if (type == null) throwNotFind("FreeSql.Provider.Odbc.dll", "FreeSql.Odbc.KingbaseES.OdbcKingbaseESProvider<>");
+                        break;
+
+                    case DataType.ShenTong:
+                        type = Type.GetType("FreeSql.ShenTong.ShenTongProvider`1,FreeSql.Provider.ShenTong")?.MakeGenericType(typeof(TMark));
+                        if (type == null) throwNotFind("FreeSql.Provider.ShenTong.dll", "FreeSql.ShenTong.ShenTongProvider<>");
+                        break;
+
                     default: throw new Exception("未指定 UseConnectionString 或者 UseConnectionFactory");
                 }
             }
@@ -244,40 +259,52 @@ namespace FreeSql
                 ret.CodeFirst.IsNoneCommandParameter = _isNoneCommandParameter;
                 ret.CodeFirst.IsGenerateCommandParameterWithLambda = _isGenerateCommandParameterWithLambda;
                 ret.CodeFirst.IsLazyLoading = _isLazyLoading;
-                var ado = ret.Ado as Internal.CommonProvider.AdoProvider;
-                ado.AopCommandExecuting += _aopCommandExecuting;
-                ado.AopCommandExecuted += _aopCommandExecuted;
 
+                if (_aopCommandExecuting != null)
+                    ret.Aop.CommandBefore += new EventHandler<Aop.CommandBeforeEventArgs>((s, e) => _aopCommandExecuting?.Invoke(e.Command));
+                if (_aopCommandExecuted != null)
+                    ret.Aop.CommandAfter += new EventHandler<Aop.CommandAfterEventArgs>((s, e) => _aopCommandExecuted?.Invoke(e.Command, e.Log));
+
+                this.EntityPropertyNameConvert(ret);
                 //添加实体属性名全局AOP转换处理
-                if (_entityPropertyConvertType != StringConvertType.None)
+                if (_nameConvertType != NameConvertType.None)
                 {
-                    switch (_entityPropertyConvertType)
+                    string PascalCaseToUnderScore(string str) => string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x.ToString() : x.ToString()));
+                    //string UnderScorePascalCase(string str) => string.Join("", str.Split('_').Select(a => a.Length > 0 ? string.Concat(char.ToUpper(a[0]), a.Substring(1)) : ""));
+
+                    switch (_nameConvertType)
                     {
-                        case StringConvertType.Lower:
-                            ret.Aop.ConfigEntityProperty += (_, e) =>
-                                e.ModifyResult.Name = e.Property.Name.ToLower();
+                        case NameConvertType.ToLower:
+                            ret.Aop.ConfigEntity += (_, e) => e.ModifyResult.Name = e.EntityType.Name.ToLower();
+                            ret.Aop.ConfigEntityProperty += (_, e) => e.ModifyResult.Name = e.Property.Name.ToLower();
+                            ret.CodeFirst.IsSyncStructureToLower = true;
                             break;
-                        case StringConvertType.Upper:
-                            ret.Aop.ConfigEntityProperty += (_, e) =>
-                                e.ModifyResult.Name = e.Property.Name.ToUpper();
+                        case NameConvertType.ToUpper:
+                            ret.Aop.ConfigEntity += (_, e) => e.ModifyResult.Name = e.EntityType.Name.ToUpper();
+                            ret.Aop.ConfigEntityProperty += (_, e) => e.ModifyResult.Name = e.Property.Name.ToUpper();
+                            ret.CodeFirst.IsSyncStructureToUpper = true;
                             break;
-                        case StringConvertType.PascalCaseToUnderscore:
-                            ret.Aop.ConfigEntityProperty += (_, e) =>
-                                e.ModifyResult.Name = StringUtils.PascalCaseToUnderScore(e.Property.Name);
+                        case NameConvertType.PascalCaseToUnderscore:
+                            ret.Aop.ConfigEntity += (_, e) => e.ModifyResult.Name = PascalCaseToUnderScore(e.EntityType.Name);
+                            ret.Aop.ConfigEntityProperty += (_, e) => e.ModifyResult.Name = PascalCaseToUnderScore(e.Property.Name);
                             break;
-                        case StringConvertType.PascalCaseToUnderscoreWithLower:
-                            ret.Aop.ConfigEntityProperty += (_, e) =>
-                                e.ModifyResult.Name = StringUtils.PascalCaseToUnderScore(e.Property.Name).ToLower();
+                        case NameConvertType.PascalCaseToUnderscoreWithLower:
+                            ret.Aop.ConfigEntity += (_, e) => e.ModifyResult.Name = PascalCaseToUnderScore(e.EntityType.Name).ToLower();
+                            ret.Aop.ConfigEntityProperty += (_, e) => e.ModifyResult.Name = PascalCaseToUnderScore(e.Property.Name).ToLower();
                             break;
-                        case StringConvertType.PascalCaseToUnderscoreWithUpper:
-                            ret.Aop.ConfigEntityProperty += (_, e) =>
-                                e.ModifyResult.Name = StringUtils.PascalCaseToUnderScore(e.Property.Name).ToUpper();
+                        case NameConvertType.PascalCaseToUnderscoreWithUpper:
+                            ret.Aop.ConfigEntity += (_, e) => e.ModifyResult.Name = PascalCaseToUnderScore(e.EntityType.Name).ToUpper();
+                            ret.Aop.ConfigEntityProperty += (_, e) => e.ModifyResult.Name = PascalCaseToUnderScore(e.Property.Name).ToUpper();
                             break;
+                        //case NameConvertType.UnderscoreToPascalCase:
+                        //    ret.Aop.ConfigEntity += (_, e) => e.ModifyResult.Name = UnderScorePascalCase(e.EntityType.Name);
+                        //    ret.Aop.ConfigEntityProperty += (_, e) => e.ModifyResult.Name = UnderScorePascalCase(e.Property.Name);
+                        //    break;
                         default:
                             break;
                     }
                 }
-                //处理 MaxLength
+                //处理 MaxLength、EFCore 特性
                 ret.Aop.ConfigEntityProperty += new EventHandler<Aop.ConfigEntityPropertyEventArgs>((s, e) =>
                 {
                     object[] attrs = null;
@@ -287,18 +314,119 @@ namespace FreeSql
                     }
                     catch { }
 
-                    var maxlenAttr = attrs?.Where(a => {
+                    var dyattr = attrs?.Where(a => {
                         return ((a as Attribute)?.TypeId as Type)?.Name == "MaxLengthAttribute";
                     }).FirstOrDefault();
-                    if (maxlenAttr != null)
+                    if (dyattr != null)
                     {
-                        var lenProp = maxlenAttr.GetType().GetProperties().Where(a => a.PropertyType.IsNumberType()).FirstOrDefault();
-                        if (lenProp != null && int.TryParse(string.Concat(lenProp.GetValue(maxlenAttr, null)), out var tryval) && tryval != 0)
+                        var lenProp = dyattr.GetType().GetProperties().Where(a => a.PropertyType.IsNumberType()).FirstOrDefault();
+                        if (lenProp != null && int.TryParse(string.Concat(lenProp.GetValue(dyattr, null)), out var tryval) && tryval != 0)
                         {
                             e.ModifyResult.StringLength = tryval;
                         }
                     }
+
+                    dyattr = attrs?.Where(a => {
+                        return ((a as Attribute)?.TypeId as Type)?.FullName == "System.ComponentModel.DataAnnotations.RequiredAttribute";
+                    }).FirstOrDefault();
+                    if (dyattr != null)
+                    {
+                        e.ModifyResult.IsNullable = false;
+                    }
+
+                    dyattr = attrs?.Where(a => {
+                        return ((a as Attribute)?.TypeId as Type)?.FullName == "System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute";
+                    }).FirstOrDefault();
+                    if (dyattr != null)
+                    {
+                        e.ModifyResult.IsIgnore = true;
+                    }
+
+                    dyattr = attrs?.Where(a => {
+                        return ((a as Attribute)?.TypeId as Type)?.FullName == "System.ComponentModel.DataAnnotations.Schema.ColumnAttribute";
+                    }).FirstOrDefault();
+                    if (dyattr != null)
+                    {
+                        var name = dyattr.GetType().GetProperties().Where(a => a.PropertyType == typeof(string) && a.Name == "Name").FirstOrDefault()?.GetValue(dyattr, null)?.ToString();
+                        short.TryParse(string.Concat(dyattr.GetType().GetProperties().Where(a => a.PropertyType == typeof(int) && a.Name == "Order").FirstOrDefault()?.GetValue(dyattr, null)), out var order);
+                        var typeName = dyattr.GetType().GetProperties().Where(a => a.PropertyType == typeof(string) && a.Name == "TypeName").FirstOrDefault()?.GetValue(dyattr, null)?.ToString();
+
+                        if (string.IsNullOrEmpty(name) == false)
+                            e.ModifyResult.Name = name;
+                        if (order != 0)
+                            e.ModifyResult.Position = order;
+                        if (string.IsNullOrEmpty(typeName) == false)
+                            e.ModifyResult.DbType = typeName;
+                    }
+
+                    dyattr = attrs?.Where(a => {
+                        return ((a as Attribute)?.TypeId as Type)?.FullName == "System.ComponentModel.DataAnnotations.KeyAttribute";
+                    }).FirstOrDefault();
+                    if (dyattr != null)
+                    {
+                        e.ModifyResult.IsPrimary = true;
+                    }
+
+                    dyattr = attrs?.Where(a => {
+                        return ((a as Attribute)?.TypeId as Type)?.FullName == "System.ComponentModel.DataAnnotations.StringLengthAttribute";
+                    }).FirstOrDefault();
+                    if (dyattr != null)
+                    {
+                        var lenProps = dyattr.GetType().GetProperties().Where(a => a.PropertyType.IsNumberType()).ToArray();
+                        var lenProp = lenProps.Length == 1 ? lenProps.FirstOrDefault() : lenProps.Where(a => a.Name == "MaximumLength").FirstOrDefault();
+                        if (lenProp != null && int.TryParse(string.Concat(lenProp.GetValue(dyattr, null)), out var tryval) && tryval != 0)
+                        {
+                            e.ModifyResult.StringLength = tryval;
+                        }
+                    }
+
+                    //https://github.com/dotnetcore/FreeSql/issues/378
+                    dyattr = attrs?.Where(a => {
+                        return ((a as Attribute)?.TypeId as Type)?.FullName == "System.ComponentModel.DataAnnotations.Schema.DatabaseGeneratedAttribute";
+                    }).FirstOrDefault();
+                    if (dyattr != null)
+                    {
+                        switch(string.Concat(dyattr.GetType().GetProperty("DatabaseGeneratedOption")?.GetValue(dyattr, null)))
+                        {
+                            case "Identity":
+                            case "1":
+                                e.ModifyResult.IsIdentity = true;
+                                break;
+                            default:
+                                e.ModifyResult.CanInsert = false;
+                                e.ModifyResult.CanUpdate = false;
+                                break;
+                        }
+                    }
                 });
+                //EFCore 特性
+                ret.Aop.ConfigEntity += new EventHandler<Aop.ConfigEntityEventArgs>((s, e) =>
+                {
+                    object[] attrs = null;
+                    try
+                    {
+                        attrs = e.EntityType.GetCustomAttributes(false).ToArray(); //.net core 反射存在版本冲突问题，导致该方法异常
+                    }
+                    catch { }
+
+                    var dyattr = attrs?.Where(a => {
+                        return ((a as Attribute)?.TypeId as Type)?.FullName == "System.ComponentModel.DataAnnotations.Schema.TableAttribute";
+                    }).FirstOrDefault();
+                    if (dyattr != null)
+                    {
+                        var name = dyattr.GetType().GetProperties().Where(a => a.PropertyType == typeof(string) && a.Name == "Name").FirstOrDefault()?.GetValue(dyattr, null)?.ToString();
+                        var schema = dyattr.GetType().GetProperties().Where(a => a.PropertyType == typeof(string) && a.Name == "Schema").FirstOrDefault()?.GetValue(dyattr, null)?.ToString();
+                        if (string.IsNullOrEmpty(name) == false && string.IsNullOrEmpty(schema) == false)
+                            e.ModifyResult.Name = $"{schema}.{name}";
+                        else if (string.IsNullOrEmpty(name) == false)
+                            e.ModifyResult.Name = name;
+                        else if (string.IsNullOrEmpty(schema) == false)
+                            e.ModifyResult.Name = $"{schema}.{e.EntityType.Name}";
+                    }
+                });
+
+                ret.Ado.MasterPool.Policy.IsAutoDisposeWithSystem = _isExitAutoDisposePool;
+                ret.Ado.SlavePools.ForEach(a => a.Policy.IsAutoDisposeWithSystem = _isExitAutoDisposePool);
             }
 
             return ret;

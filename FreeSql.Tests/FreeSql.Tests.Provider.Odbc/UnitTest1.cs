@@ -134,73 +134,73 @@ namespace FreeSql.Tests.Odbc
         {
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "article_id", IsIdentity = true, IsPrimary = true)]
             public int ArticleId { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "article_title")]
             public string ArticleTitle { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "category_id")]
             public int CategoryId { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "channel_id")]
             public int ChannelId { get; set; }
 
             /// <summary>
             /// 类型
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "type_id")]
             public int TypeId { get; set; }
 
             /// <summary>
             /// 内容简介
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "summary")]
             public string Summary { get; set; }
 
             /// <summary>
             /// 缩略图
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "thumbnail")]
             public string Thumbnail { get; set; }
 
             /// <summary>
             /// 点击量
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "hits")]
             public int Hits { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "is_display")]
             public int IsDisplay { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "status")]
             public int Status { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "create_time")]
             public int CreateTime { get; set; }
 
             /// <summary>
             /// 
-            /// </summary>		
+            /// </summary>        
             [Column(Name = "release_time")]
             public int ReleaseTime { get; set; }
 
@@ -475,17 +475,17 @@ WHERE ROWNUM < 11";
 
             //var testaddlist = new List<NewsArticle>();
             //for(var a = 0; a < 133905; a++) {
-            //	testaddlist.Add(new NewsArticle {
-            //		ArticleTitle = "testaddlist_topic" + a,
-            //		Hits = a,
-            //	});
+            //    testaddlist.Add(new NewsArticle {
+            //        ArticleTitle = "testaddlist_topic" + a,
+            //        Hits = a,
+            //    });
             //}
             //g.mysql.Insert<NewsArticle>(testaddlist)
-            //	//.NoneParameter()
-            //	.ExecuteAffrows();
+            //    //.NoneParameter()
+            //    .ExecuteAffrows();
 
 
-            g.mysql.Aop.ParseExpression = (s, e) =>
+            g.mysql.Aop.ParseExpression += (s, e) =>
             {
                 if (e.Expression.NodeType == ExpressionType.Call)
                 {
@@ -563,8 +563,6 @@ WHERE ROWNUM < 11";
                 .UpdateColumns(x => new { x.Status, x.CategoryId, x.ArticleTitle })
                 .ToSql();
 
-            var sqldddklist = g.mysql.Select<NewsArticle>().Select(a => new NewsArticleDto { }).ToList();
-
 
             var sql1111333 = g.mysql.Update<Model2>()
                 .SetSource(new Model2 { id = 1, Title = "xxx", Parent_id = 0 })
@@ -608,15 +606,6 @@ WHERE ROWNUM < 11";
                 .ToList();
 
             var ttt1 = g.mysql.Select<Model1>().Where(a => a.Childs.AsSelect().Any(b => b.Title == "111")).ToList();
-
-            var linqto1 =
-                from p in g.mysql.Select<Order>()
-                where p.Id >= 0
-                // && p.OrderDetails.AsSelect().Where(c => c.Id > 10).Any()
-                orderby p.Id descending
-                orderby p.CustomerName ascending
-                select new { Name = p.CustomerName, Length = p.Id };
-
             var testpid1 = g.mysql.Insert<TestTypeInfo>().AppendData(new TestTypeInfo { Name = "Name" + DateTime.Now.ToString("yyyyMMddHHmmss") }).ExecuteIdentity();
             g.mysql.Insert<TestInfo>().AppendData(new TestInfo { Title = "Title" + DateTime.Now.ToString("yyyyMMddHHmmss"), CreateTime = DateTime.Now, TypeGuid = (int)testpid1 }).ExecuteAffrows();
 
@@ -883,9 +872,9 @@ WHERE ROWNUM < 11";
             //);
 
             //var sql4 = select.From<TestTypeInfo, TestTypeParentInfo>((a, b, c) => new SelectFrom()
-            //	.InnerJoin(a.TypeGuid == b.Guid)
-            //	.LeftJoin(c.Id == b.ParentId)
-            //	.Where(b.Name == "xxx"))
+            //    .InnerJoin(a.TypeGuid == b.Guid)
+            //    .LeftJoin(c.Id == b.ParentId)
+            //    .Where(b.Name == "xxx"))
             //.Where(a => a.Id == 1).ToSql();
 
             var sql4 = select.From<TestTypeInfo, TestTypeParentInfo>((s, b, c) => s
